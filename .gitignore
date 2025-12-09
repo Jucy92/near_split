@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.env
+.env.local
+
+# Documentation (Markdown files)
+*.md
+!README.md
+
+# Claude Code session files (personal notes)
+.claude/
+
+# Node modules (if frontend is added)
+node_modules/
