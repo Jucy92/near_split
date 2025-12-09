@@ -11,81 +11,177 @@
 - **서비스명**: NearSplit
 - **핵심 가치**: 대용량 상품을 반경 3km 내 근처 사용자와 소분하여 경제적이고 친환경적인 구매 실현
 - **주요 기능**:
-  - 🏘️ 지역 기반 매칭 (반경 3km)
+  - 🏘️ 지역 기반 매칭 (반경 3km, PostGIS 활용)
   - 🛡️ 에스크로 결제 시스템
   - 🔗 외부 상품 API 연동 (쿠팡/코스트코)
-  - 📱 웹 → 모바일 앱 확장 계획
+  - 💬 실시간 채팅 (WebSocket)
+  - 📊 신뢰도 평가 시스템
 
 ---
 
-## 🗂️ 프로젝트 문서 구조
+## 🛠️ 기술 스택
 
-프로젝트는 체계적인 단계별 문서로 관리됩니다:
+### Backend
+- **Framework**: Spring Boot 3.4.1
+- **Language**: Java 17
+- **Database**:
+  - H2 (개발 환경)
+  - PostgreSQL + PostGIS (프로덕션, 지리 정보 처리)
+- **Authentication**: Spring Security + JWT (JJWT 0.12.3)
+- **Real-time**: WebSocket
+- **Caching**: Redis
+- **Message Queue**: Kafka
+- **API Documentation**: Swagger/OpenAPI 3.0
 
-### 📋 기획 및 설계 문서 (`claudedocs/`)
-1. **[PROJECT_ROADMAP.md](./claudedocs/PROJECT_ROADMAP.md)** - 전체 프로젝트 로드맵 및 진행 현황
-2. **[01_SERVICE_PLANNING.md](./claudedocs/01_SERVICE_PLANNING.md)** - 서비스 기획 단계
-3. **[02_REQUIREMENTS_USECASES.md](./claudedocs/02_REQUIREMENTS_USECASES.md)** - 요구사항 및 유스케이스
-4. **03_DESIGN_PHASE.md** - 설계 단계 (화면·ERD·API·아키텍처) [예정]
-5. **04_DEVELOPMENT.md** - 개발 단계 [예정]
-6. **05_BUILD_DEPLOY.md** - 빌드/배포 단계 [예정]
-7. **06_OPERATIONS.md** - 운영 단계 [예정]
-8. **07_MAINTENANCE.md** - 유지보수 및 확장 단계 [예정]
-
----
-
-## 🎯 현재 진행 단계
-
-**✅ 1단계: 서비스 기획** (진행 중)
-- [x] 프로젝트 문서 구조 수립
-- [ ] 비즈니스 모델 확정
-- [ ] MVP 기능 범위 확정
-
-**⬜ 2단계: 요구사항 정리** (대기)
-**⬜ 3단계: 설계** (대기)
-**⬜ 4단계: 개발** (대기)
-
----
-
-## 🚀 빠른 시작 (추후 업데이트)
-
-```bash
-# 저장소 클론
-git clone [repository-url]
-
-# 의존성 설치
-npm install
-
-# 개발 서버 실행
-npm run dev
-```
-
----
-
-## 🛠️ 기술 스택 (예정)
-
-### Frontend
+### Frontend (예정)
 - React / Next.js
 - TypeScript
 - Tailwind CSS
 
-### Backend
-- Node.js / Express
-- PostgreSQL (PostGIS for geospatial)
-- Redis (caching)
-
-### Infrastructure
-- AWS / Vercel
+### Infrastructure (예정)
+- AWS
 - Docker
 - GitHub Actions (CI/CD)
 
 ---
 
-## 📞 문의 및 협업
+## 🎯 개발 진행 상황
 
-프로젝트 진행 상황은 `claudedocs/PROJECT_ROADMAP.md`에서 확인할 수 있습니다.
+**✅ Week 1: 인증 및 사용자 관리** (진행 중)
+- [x] Day 1-2: User 엔티티 및 Repository 작성 완료
+- [x] Day 3-4: JWT 인증 및 AuthService 구현 완료
+  - Spring Security 설정
+  - JWT 토큰 생성/검증 (쿠키 기반)
+  - 회원가입/로그인 API
+- [ ] Day 5-7: User API 작성 중
+  - JWT 인증 필터 작성
+  - 프로필 조회/수정 API
+
+**⬜ Week 2: 상품 및 소분 글** (대기)
+**⬜ Week 3: 채팅 및 알림** (대기)
+**⬜ Week 4: 결제 및 거래** (대기)
 
 ---
 
-**마지막 업데이트**: 2025-11-26
-**프로젝트 상태**: 🟡 기획 단계
+## 🚀 빠른 시작
+
+### 요구사항
+- Java 17 이상
+- Gradle 8.x
+
+### 실행 방법
+
+```bash
+# 저장소 클론
+git clone https://github.com/Jucy92/near_split.git
+cd near_split/backend
+
+# 빌드 및 실행
+./gradlew bootRun
+
+# 테스트 실행
+./gradlew test
+```
+
+### API 문서 확인
+서버 실행 후 Swagger UI 접속:
+```
+http://localhost:8080/swagger-ui.html
+```
+
+### H2 Console 접속 (개발 환경)
+```
+http://localhost:8080/h2-console
+JDBC URL: jdbc:h2:mem:testdb
+Username: sa
+Password: (비어있음)
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+backend/
+├── src/main/java/com/nearsplit/
+│   ├── common/              # 공통 유틸리티 (JwtUtil 등)
+│   ├── config/              # 설정 클래스 (SecurityConfig 등)
+│   └── domain/
+│       ├── user/            # 사용자 도메인
+│       │   ├── entity/
+│       │   ├── repository/
+│       │   ├── service/
+│       │   ├── controller/
+│       │   └── dto/
+│       ├── product/         # 상품 도메인 (예정)
+│       ├── split/           # 소분 글 도메인 (예정)
+│       └── chat/            # 채팅 도메인 (예정)
+└── src/test/                # 테스트 코드
+```
+
+---
+
+## 🔑 주요 API 엔드포인트
+
+### 인증 API
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| POST | `/api/auth/register` | 회원가입 |
+| POST | `/api/auth/login` | 로그인 (JWT 쿠키 발급) |
+
+### 사용자 API (예정)
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| GET | `/api/users/me` | 내 프로필 조회 |
+| PATCH | `/api/users/me` | 내 프로필 수정 |
+
+---
+
+## 🧪 테스트
+
+### 단위 테스트
+```bash
+./gradlew test
+```
+
+### curl 테스트 예시
+```bash
+# 회원가입
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123!",
+    "name": "홍길동",
+    "nickname": "gildong"
+  }'
+
+# 로그인 (쿠키에 JWT 저장)
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password123!"
+  }' \
+  -c cookies.txt
+
+# 프로필 조회 (쿠키 사용)
+curl -X GET http://localhost:8080/api/users/me -b cookies.txt
+```
+
+---
+
+## 📚 문서
+
+자세한 개발 가이드와 문서는 프로젝트 내부 문서를 참조하세요:
+- 개발 가이드: `DEVELOPMENT_GUIDE.md` (비공개)
+- ERD: `ERD.md` (비공개)
+- API 명세: `API_SPEC.md` (비공개)
+
+---
+
+## 📞 라이선스 및 문의
+
+**프로젝트 상태**: 🟢 개발 진행 중
+**마지막 업데이트**: 2025-12-09
+**개발 기간**: Week 1 진행 중 (총 8주 예정)

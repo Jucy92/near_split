@@ -13,12 +13,12 @@ Thumbs.db
 .env
 .env.local
 
-# Documentation (Markdown files)
-*.md
-!README.md
-
-# Claude Code session files (personal notes)
+# Documentation (개발 가이드는 제외, README만 포함)
+DEVELOPMENT_GUIDE.md
+ERD.md
+API_SPEC.md
 .claude/
+claudedocs/
 
 # Node modules (if frontend is added)
 node_modules/
