@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DataJpaTest
+@DataJpaTest    // 엔티티 기반으로 데이터 베이스 빈만 등록
 class UserRepositoryTest {
 
     @Autowired

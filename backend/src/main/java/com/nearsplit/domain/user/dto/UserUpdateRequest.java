@@ -5,6 +5,7 @@ import lombok.*;
 @Getter /*@Setter*/ @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class UserUpdateRequest {
     private String nickname;
     private String address;

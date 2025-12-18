@@ -2,6 +2,9 @@ spring:
   application:
     name: nearsplit
 
+  #jackson:
+  #  default-property-inclusion: non_null  # 전역 설정 DTO 응답 시 null 값은 JSON 리스트에서 제외하고 보내는 설정 / java <-> JSON NULL exclude setting
+
   profiles:
     active: dev
 

@@ -44,10 +44,10 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 이메일입니다"));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), findUser.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 다릅니다.");
+            throw new IllegalArgumentException("입력하신 패스워드가 틀립니다");
         }
 
-        return LoginResponse.builder().userResponse(UserResponse.from(findUser)).build();
+        return LoginResponse.builder().userResponse(UserResponse.fromBasic(findUser)).build();
 
     }
 
