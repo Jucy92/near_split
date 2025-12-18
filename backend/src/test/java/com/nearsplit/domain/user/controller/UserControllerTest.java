@@ -138,14 +138,11 @@ class UserControllerTest {  //  JWT 인증 테스트
                         .cookie(cookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
-
-                //.andExpect(status().isOk())
-                //.andExpect(jsonPath("$.nickname").value("다른닉네임"));
                 .andExpect(status().is4xxClientError());
 
 
-
     }
+
     @Test
     void 프로필_수정_성공_중복닉네임_본인() throws Exception {
         // given
