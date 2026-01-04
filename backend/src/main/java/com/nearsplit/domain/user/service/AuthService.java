@@ -51,4 +51,19 @@ public class AuthService {
 
     }
 
+    public void logout() {
+        /**
+         * 세션이었으면 SpringSecurity 에서 지워줘야 할 작업이 있겠지만.. JWT라 처리할 게 없네
+         * .logout(logout -> logout
+         *       .logoutUrl("/logout")
+         *       .deleteCookies("JSESSIONID")           // 1️⃣ 쿠키 삭제
+         *       .invalidateHttpSession(true)            // 2️⃣ 서버의 세션 무효화 ⭐⭐⭐
+         *       .clearAuthentication(true)              // 3️⃣ SecurityContext 초기화
+         *       .logoutSuccessHandler(...)              // 4️⃣ 로그아웃 후 처리
+         *   )
+         *
+         *   만약 세션 정보를 DB에 저장 했다면 값을 지웠어야 함
+         */
+    }
+
 }

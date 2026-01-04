@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -45,4 +46,18 @@ public class AuthController {
 
         return ResponseEntity.ok().body(loginResponse);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response /*@AuthenticationPrincipal Long userId*/) { // Spring Security 통과해서 와서 auth 등록은 된 상태라 사용은 가능..
+        Cookie cookie = new Cookie("accessToken", null);
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+
+        response.addCookie(cookie);
+        // 지금 생각해보니깐.. 로그인 할 때는 쿠키 값을 컨트롤러에서 생성해줬는데 /*필터에서 인증 생성할 때(기존로직 OK),*/ 토큰 갱신 할 때(필터쪽에 추가해야함)는 필터에서 쿠키 처리를 해줘야 할 거 같은데..
+        return ResponseEntity.ok("로그아웃 성공");
+
+    }
+
 }
