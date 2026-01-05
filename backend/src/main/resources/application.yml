@@ -22,11 +22,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: true              # SQL Output(출력)
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
-        format_sql: true
+        format_sql: true        # SQL Formating
+        user_sql_comments: true # JPQL 주석 표시
 
   data:
     redis:
