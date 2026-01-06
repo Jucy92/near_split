@@ -9,6 +9,7 @@ import com.nearsplit.domain.split_group.repository.GroupParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class SplitGroupService {
     private final SplitGroupRepository splitGroupRepository;
     private final GroupParticipantRepository participantRepository;
@@ -39,7 +41,8 @@ public class SplitGroupService {
         newGroup.setMaxParticipants(request.getMaxParticipants());
         newGroup.setClosedAt(request.getClosedAt());
         SplitGroup saved = splitGroupRepository.save(newGroup);
-        
+        log.info("생성된 그룹={}",saved);
+
         // 새로운 그룹의 사용자 추가
         GroupParticipant participant = new GroupParticipant();
         participant.setSplitGroup(saved);
@@ -49,6 +52,8 @@ public class SplitGroupService {
                 .divide(BigDecimal.valueOf(saved.getMaxParticipants()),2, RoundingMode.HALF_DOWN)); // 나누는 수, 소수점 2자리에서, 반올림
 
         participantRepository.save(participant);
+        log.info("그룹 사용자={}",participant);
+
 
         return SplitGroupResponse.from(saved);
     }

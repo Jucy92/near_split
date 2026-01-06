@@ -7,6 +7,7 @@ import com.nearsplit.domain.split_group.service.SplitGroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +24,7 @@ public class SplitGroupController {
     }
 
     @PostMapping
-    public ResponseEntity<SplitGroupResponse> createGroup(@AuthenticationPrincipal Long userId, @RequestBody SplitGroupRequest splitGroupRequest) {
+    public ResponseEntity<SplitGroupResponse> createGroup(@AuthenticationPrincipal Long userId, @Validated @RequestBody SplitGroupRequest splitGroupRequest) {
         return ResponseEntity.ok().body(splitGroupService.createSplitGroup(userId, splitGroupRequest));
     }
 }
