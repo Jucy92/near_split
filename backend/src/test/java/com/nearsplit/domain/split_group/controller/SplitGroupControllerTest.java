@@ -157,4 +157,43 @@ class SplitGroupControllerTest {
     }
 
 
+    @Test
+    void 내_그룹_조회_방장() throws Exception {
+        // given - 그룹 생성 (나는 방장)
+        SplitGroupRequest request = new SplitGroupRequest();
+        request.setTitle("사과 10kg 소분");
+        request.setTotalPrice(new BigDecimal("50000"));
+        request.setMaxParticipants(5);
+        request.setPickupLocation("서울시 강남구");
+        request.setClosedAt(LocalDate.now().plusDays(7));
+
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        // 그룹 생성
+        mockMvc.perform(post("/api/split")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody));
+
+        // when & then - 내 그룹 조회
+        mockMvc.perform(get("/api/split/my")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("사과 10kg 소분"))
+                .andExpect(jsonPath("$[0].isHost").value(true));  // ← 방장 확인
+    }
+
+    @Test
+    void 내_그룹_조회_빈_배열() throws Exception {
+        // given
+        // 그룹 생성하지 않음
+
+        // when & then
+        mockMvc.perform(get("/api/split/my")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
 }
