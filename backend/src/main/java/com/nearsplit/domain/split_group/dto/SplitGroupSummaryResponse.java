@@ -1,6 +1,6 @@
 package com.nearsplit.domain.split_group.dto;
 
-import com.nearsplit.domain.split_group.entity.GroupParticipant;
+import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +34,7 @@ public class SplitGroupSummaryResponse {
     private LocalDate closedAt;           // 추가
     private Boolean isHost;               // 추가 (방장 여부)
 
-    public static SplitGroupSummaryResponse from(GroupParticipant participant) {
+    public static SplitGroupSummaryResponse from(Participant participant) {
         SplitGroup splitGroup = participant.getSplitGroup();
 
         return SplitGroupSummaryResponse.builder()

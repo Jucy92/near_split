@@ -3,9 +3,8 @@ package com.nearsplit.domain.split_group.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nearsplit.common.JwtUtil;
 import com.nearsplit.domain.split_group.dto.SplitGroupRequest;
-import com.nearsplit.domain.split_group.repository.GroupParticipantRepository;
+import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.service.SplitGroupService;
-import com.nearsplit.domain.user.dto.LoginRequest;
 import com.nearsplit.domain.user.dto.RegisterRequest;
 import com.nearsplit.domain.user.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,14 +15,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.print.attribute.standard.Media;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -59,7 +55,7 @@ class SplitGroupControllerTest {
     @Autowired
     private SplitGroupService splitGroupService;
     @Autowired
-    private GroupParticipantRepository groupParticipantRepository;
+    private ParticipantRepository groupParticipantRepository;
     private Long userId;
     private String token;
 

@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter @Setter @Builder
 @AllArgsConstructor
 @ToString
-public class GroupParticipant {
+public class Participant {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -27,8 +27,10 @@ public class GroupParticipant {
     private Long userId;    // 참여자들 이름 보여줄려면 나중에 여기 User로 해서 가져와야할거같은데..
     private Integer quantity;
     private BigDecimal shareAmount;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    private String status = "PENDING";  // PENDING, APPROVED, REJECTED, PAID, COMPLETED / 대기, 승인, 거절, 결제, 완료
+    private ParticipantStatus status = ParticipantStatus.PENDING;  // PENDING, APPROVED, REJECTED, PAID, COMPLETED / 대기, 승인, 거절, 결제, 완료
     @CreatedDate
     private LocalDateTime joinedAt;
     @LastModifiedDate

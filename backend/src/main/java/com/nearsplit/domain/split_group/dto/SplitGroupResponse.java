@@ -1,5 +1,6 @@
 package com.nearsplit.domain.split_group.dto;
 
+import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,8 +28,10 @@ public class SplitGroupResponse {
     private LocalDate createdAt;
 
     // 그룹방 참여자 정보(GroupParticipants)
-    private List<GroupParticipantResponse> participants;
+    private List<ParticipantResponse> participants;
+
     public static SplitGroupResponse from(SplitGroup splitGroup) {
+
         return SplitGroupResponse.builder()
                 .SplitGroupId(splitGroup.getId())
                 .title(splitGroup.getTitle())
@@ -39,8 +42,10 @@ public class SplitGroupResponse {
                 .groupState(splitGroup.getStatus())
                 .closedAt(splitGroup.getClosedAt())
                 .createdAt(splitGroup.getCreatedAt().toLocalDate())
-
-                //.participantUserId(splitGroup.getParticipants().stream().filter())    // anyMatch가 아닌가..? 그걸로 userId 찾아서 그 정보 가져올랬는데..
+                .participants(splitGroup.getParticipants().stream()
+                        //.map(participantEntity -> ParticipantResponse.from(participantEntity))    // 아래와 같이 축약 가능
+                        .map(ParticipantResponse::from)
+                        .toList())
                 .build();
     }
 }

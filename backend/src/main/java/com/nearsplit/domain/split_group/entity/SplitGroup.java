@@ -1,6 +1,5 @@
 package com.nearsplit.domain.split_group.entity;
 
-import com.nearsplit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -43,8 +42,10 @@ public class SplitGroup {
     private String pickupLocationGeo;
     private LocalDate pickupDate;               // 이건 생성 때가 아니라.. 파티원 다 모아지고 결정해서 입력하는게 낫겠지..?
     private LocalDate closedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    private String status = "RECRUITING";       // RECRUITING, FULL, CLOSED, COMPLETED, CANCELLED (모집중, 모집완료, 거래종료, 완료(?), 취소)
+    private SplitGroupStatus status = SplitGroupStatus.RECRUITING;  // RECRUITING, FULL, CLOSED, COMPLETED, CANCELLED (모집중, 모집완료, 거래종료, 완료(?), 취소)
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate
@@ -52,14 +53,14 @@ public class SplitGroup {
 
     /**
      * 주의사항:
-     *   - @OneToMany(mappedBy = "splitGroup"): GroupParticipant의 splitGroup 필드와 매핑
+     *   - @OneToMany(mappedBy = "splitGroup"): participant의 splitGroup 필드와 매핑
      *   - cascade = CascadeType.ALL: SplitGroup 삭제 시 참여자도 모두 삭제
      *   - orphanRemoval = true: 참여자 목록에서 제거 시 DB에서도 삭제
      *   - @Builder.Default: participants를 빈 리스트로 초기화
      */
-    //  ⭐ 중요: 참여자 목록 (OneToMany)
+    //  ⭐ 중요: 참여자 목록 (1:N 관계)
     @OneToMany(mappedBy = "splitGroup", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<GroupParticipant> participants = new ArrayList<>();
+    private List<Participant> participants = new ArrayList<>();
 
 }
