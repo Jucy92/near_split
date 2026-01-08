@@ -10,12 +10,13 @@ import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -28,7 +29,7 @@ public class SplitGroupService {
     private final UserRepository userRepository;
 
     @Transactional
-    public SplitGroupResponse createSplitGroup(Long userId, SplitGroupRequest request) {
+    public SplitGroup createSplitGroup(Long userId, SplitGroupRequest request) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 회원입니다. 인증 정보를 확인해 주세요.");
         }
@@ -55,10 +56,14 @@ public class SplitGroupService {
         log.info("생성된 그룹 사용자={}",participant);
 
 
-        return SplitGroupResponse.from(saved);
+        return saved;
     }
 
-    public List<SplitGroupSummaryResponse> getMySplitGroups(Long userId) {
+    public Page<SplitGroup> getAllRecruitingGroups(PageRequest pageRequest) {
+        return splitGroupRepository.findByStatus(SplitGroupStatus.RECRUITING, pageRequest);
+    }
+
+    public List<Participant> getMySplitGroups(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 회원입니다. 인증 정보를 확인해 주세요.");
         }
@@ -68,23 +73,17 @@ public class SplitGroupService {
             throw new IllegalArgumentException("그룹에 참여한 정보가 없습니다.");
         }
 
-        List<SplitGroupSummaryResponse> responses = new ArrayList<>();  // 본인이 관리장이 아닌 디테일->마스터 기본 정보(번호,제목,인원,금액 등)
-
-        for (Participant participant : participantGroups) {
-            responses.add(SplitGroupSummaryResponse.from(participant));
-        }
-
-        return responses;
+        return participantGroups;
     }
 
-    public SplitGroupResponse getSplitGroup(Long splitGroupId, Long userId) {
+    public SplitGroup getSplitGroup(Long splitGroupId, Long userId) {
         if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {   // 해당 groupId에 userId가 참여자로 있는 지 체크
             throw new IllegalArgumentException("권한이 없는 접근 입니다.");
         }
 
-        SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
+        return splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("조회할 수 없는 그룹 번호입니다."));
-        return SplitGroupResponse.from(findGroup);
+
     }
 
     @Transactional

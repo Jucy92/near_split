@@ -35,7 +35,7 @@ public class SplitGroupSummaryResponse {
     private LocalDate closedAt;           // 추가
     private Boolean isHost;               // 추가 (방장 여부)
 
-    public static SplitGroupSummaryResponse from(Participant participant) {
+    public static SplitGroupSummaryResponse from(Participant participant) {     // 호스트 유무 체크하기 위해서 파티원 엔티티 받음
         SplitGroup splitGroup = participant.getSplitGroup();
 
         return SplitGroupSummaryResponse.builder()
