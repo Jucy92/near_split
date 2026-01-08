@@ -1,6 +1,7 @@
 package com.nearsplit.domain.split_group.repository;
 
 import com.nearsplit.domain.split_group.entity.SplitGroup;
+import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -95,7 +96,7 @@ class SplitGroupRepositoryTest {
                 .maxParticipants(3)
                 .pickupLocation("홍대")
                 .build();
-        closed.setStatus("CLOSED");
+        closed.setStatus(SplitGroupStatus.CLOSED);
 
         splitGroupRepository.save(recruiting);
         splitGroupRepository.save(closed);

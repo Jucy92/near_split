@@ -2,6 +2,7 @@ package com.nearsplit.domain.split_group.dto;
 
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
+import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,7 +31,7 @@ public class SplitGroupSummaryResponse {
     private BigDecimal totalPrice;
     private Integer currentParticipants;  // 추가
     private Integer maxParticipants;
-    private String status;                // 추가
+    private SplitGroupStatus status;      // 추가
     private LocalDate closedAt;           // 추가
     private Boolean isHost;               // 추가 (방장 여부)
 

@@ -1,8 +1,7 @@
 package com.nearsplit.domain.split_group.dto;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * packageName  : com.nearsplit.domain.split_group.dto
@@ -17,6 +16,8 @@ import lombok.Setter;
  */
 
 @Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ParticipantActionRequest {
     @NotNull
     private Long participantUserId;

@@ -34,20 +34,26 @@ public class SplitGroupController {
 
     @PostMapping("/{groupId}/join")
     public ResponseEntity<?> joinSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
-        splitGroupService.joinSplitGroup(groupId, userId);
-        return ResponseEntity.ok().build();
+        Participant participant = splitGroupService.joinSplitGroup(groupId, userId);
+        return ResponseEntity.ok().body(participant);
     }
     @PostMapping("/{groupId}/approve")
     public ResponseEntity<ParticipantResponse> approveSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long hostId,
-                                                                 @Validated ParticipantActionRequest participantActionRequest) {
+                                                                 @Validated @RequestBody ParticipantActionRequest participantActionRequest) {
         Participant updated = splitGroupService.approveParticipant(groupId, hostId, participantActionRequest);
         return ResponseEntity.ok(ParticipantResponse.from(updated));  // 204 리턴
     }
     @PostMapping("/{groupId}/reject")
     public ResponseEntity<ParticipantResponse> rejectSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long hostId,
-                                            @Validated ParticipantActionRequest participantActionRequest) {
-        Participant updated = splitGroupService.approveParticipant(groupId, hostId, participantActionRequest);
+                                            @Validated @RequestBody ParticipantActionRequest participantActionRequest) {
+        Participant updated = splitGroupService.rejectedParticipant(groupId, hostId, participantActionRequest);
         return ResponseEntity.ok(ParticipantResponse.from(updated));
+    }
+
+    @GetMapping("/{groupId}/participants")
+    public ResponseEntity<?> getParticipantCount(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+        long participantCount = splitGroupService.getParticipantCount(groupId, userId);
+        return ResponseEntity.ok().body(participantCount);
     }
 
 }

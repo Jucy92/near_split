@@ -52,7 +52,7 @@ public class SplitGroupService {
                 .divide(BigDecimal.valueOf(saved.getMaxParticipants()),2, RoundingMode.HALF_DOWN)); // 나누는 수, 소수점 2자리에서, 반올림
 
         participantRepository.save(participant);
-        log.info("그룹 사용자={}",participant);
+        log.info("생성된 그룹 사용자={}",participant);
 
 
         return SplitGroupResponse.from(saved);
@@ -88,7 +88,7 @@ public class SplitGroupService {
     }
 
     @Transactional
-    public void joinSplitGroup(Long splitGroupId, Long userId) {
+    public Participant joinSplitGroup(Long splitGroupId, Long userId) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
 
@@ -110,7 +110,7 @@ public class SplitGroupService {
                 .userId(userId)
                 .build();
 
-        participantRepository.save(joiner);
+        return participantRepository.save(joiner);
     }
 
     @Transactional
@@ -156,7 +156,18 @@ public class SplitGroupService {
         participant.setStatus(ParticipantStatus.REJECTED);
 
         return participant;
+    }
 
+    public long getParticipantCount(Long splitGroupId, Long userId) {
+        SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
+        /*  // 리스트에서 타이틀 보고 조회해서 참여 인원 (3/5) 이런식으로 봐야할 수도 있으니깐... 일단 패스
+        if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
+            throw new IllegalArgumentException("참여자만 인원을 조회할 수 있습니다?");
+        }
+        */
+        long count = participantRepository.countBySplitGroupIdAndStatus(splitGroupId, ParticipantStatus.APPROVED);
+        return count;
     }
 
 

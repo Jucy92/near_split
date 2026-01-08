@@ -2,10 +2,14 @@ package com.nearsplit.domain.split_group.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nearsplit.common.JwtUtil;
+import com.nearsplit.domain.split_group.dto.ParticipantActionRequest;
 import com.nearsplit.domain.split_group.dto.SplitGroupRequest;
+import com.nearsplit.domain.split_group.dto.SplitGroupResponse;
+import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.service.SplitGroupService;
 import com.nearsplit.domain.user.dto.RegisterRequest;
+import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,20 +60,38 @@ class SplitGroupControllerTest {
     private SplitGroupService splitGroupService;
     @Autowired
     private ParticipantRepository groupParticipantRepository;
-    private Long userId;
-    private String token;
+    private Long userId, userId2, userId3;
+    private String token, token2, token3;
 
     @BeforeEach
     void 설정() {
         RegisterRequest register = RegisterRequest.builder()
                 .email("test1@test.com")
                 .password("test1234")
-                .name("테스터1")
+                .name("호스트")
                 .nickname("하늘다람쥐")
                 .build();
         userId = authService.register(register);
-        //authService.login(LoginRequest.builder().email("test1@test.com").password("test1234").build());
+        RegisterRequest register2 = RegisterRequest.builder()
+                .email("test2@test.com").password("test1234").name("테스터2").nickname("우이산토끼").build();
+        userId2 = authService.register(register2);
+        RegisterRequest register3 = RegisterRequest.builder()
+                .email("test3@test.com").password("test1234").name("테스터3").nickname("빨래골빨래").build();
+        userId3 = authService.register(register3);
+
         token = jwtUtil.generateToken(userId);
+        token2 = jwtUtil.generateToken(userId2);
+        token3 = jwtUtil.generateToken(userId3);
+
+        SplitGroupRequest request = new SplitGroupRequest();
+        request.setTitle("샤브샤브 재료 소분 모임");
+        request.setTotalPrice(BigDecimal.valueOf(80_000));
+        request.setMaxParticipants(4);
+        request.setPickupLocation("강북구청");
+        request.setClosedAt(LocalDate.now().plusDays(7));
+
+        SplitGroupResponse splitGroup = splitGroupService.createSplitGroup(userId, request);
+        log.info("생성된 소그룹 정보={}",splitGroup);
     }
 
     @Test
@@ -190,6 +212,146 @@ class SplitGroupControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void 그룹_참여_신청_성공() throws Exception {
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2));
+
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token3)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(3));
+    }
+    @Test
+    void 그룹_참여_신청_실패_인증없음() throws Exception {
+        mockMvc.perform(post("/api/split/1/join")
+                        //.header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+    @Test
+    void 그룹_참여_신청_실패_중복요청() throws Exception {
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2));
+
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("이미 참여 신청한 그룹입니다."));
+    }
+    @Test
+    void 그룹_참여_신청_실패_존재하지않는그룹() throws Exception {
+        mockMvc.perform(post("/api/split/21/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("존재하지 않는 그룹입니다."));
+
+    }
+
+    @Test
+    void 참여자_승인_성공() throws Exception {
+        // given
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+
+        ParticipantActionRequest request = new ParticipantActionRequest();
+        request.setParticipantUserId(userId2);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(post("/api/split/1/approve")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.APPROVED.name()));
+    }
+    @Test
+    void 참여자_승인_실패_방장이아님() throws Exception {
+        // given
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+
+        ParticipantActionRequest request = new ParticipantActionRequest();
+        request.setParticipantUserId(userId2);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(post("/api/split/1/approve")
+                .header("Authorization", "Bearer " + token2)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("방장만 승인할 수 있습니다."));
+    }
+    @Test
+    void 참여자_거절_성공() throws Exception {
+        // given
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+
+        ParticipantActionRequest request = new ParticipantActionRequest();
+        request.setParticipantUserId(userId2);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(post("/api/split/1/reject")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.REJECTED.name()));
+    }
+    @Test
+    void 참여자_거절_실패_방장이아님() throws Exception {
+        // given
+        mockMvc.perform(post("/api/split/1/join")
+                        .header("Authorization", "Bearer " + token2)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+
+        ParticipantActionRequest request = new ParticipantActionRequest();
+        request.setParticipantUserId(userId2);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        // when & then
+        mockMvc.perform(post("/api/split/1/reject")
+                .header("Authorization", "Bearer " + token2)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("방장만 거절할 수 있습니다."));
     }
 
 }

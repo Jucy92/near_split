@@ -2,6 +2,7 @@ package com.nearsplit.domain.split_group.dto;
 
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
+import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,7 +24,7 @@ public class SplitGroupResponse {
     private int maxParticipants;
     private String pickupLocation;
     private String pickupLocationGeo;
-    private String groupState;
+    private SplitGroupStatus groupState;
     private LocalDate closedAt; // 마감일
     private LocalDate createdAt;
 

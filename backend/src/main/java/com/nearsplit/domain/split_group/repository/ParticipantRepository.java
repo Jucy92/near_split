@@ -1,6 +1,7 @@
 package com.nearsplit.domain.split_group.repository;
 
 import com.nearsplit.domain.split_group.entity.Participant;
+import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -24,4 +25,6 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     Optional<Participant> findBySplitGroupIdAndUserId(Long splitGroupId, Long userId);
 
     boolean existsBySplitGroupIdAndUserId(Long splitGroupId, Long userId);
+
+    long countBySplitGroupIdAndStatus(Long splitGroupId, ParticipantStatus status);
 }
