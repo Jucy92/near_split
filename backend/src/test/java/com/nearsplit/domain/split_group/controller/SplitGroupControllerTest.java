@@ -4,12 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nearsplit.common.JwtUtil;
 import com.nearsplit.domain.split_group.dto.ParticipantActionRequest;
 import com.nearsplit.domain.split_group.dto.SplitGroupRequest;
-import com.nearsplit.domain.split_group.dto.SplitGroupResponse;
 import com.nearsplit.domain.split_group.entity.ParticipantStatus;
+import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.service.SplitGroupService;
 import com.nearsplit.domain.user.dto.RegisterRequest;
-import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,7 +89,7 @@ class SplitGroupControllerTest {
         request.setPickupLocation("강북구청");
         request.setClosedAt(LocalDate.now().plusDays(7));
 
-        SplitGroupResponse splitGroup = splitGroupService.createSplitGroup(userId, request);
+        SplitGroup splitGroup = splitGroupService.createSplitGroup(userId, request);
         log.info("생성된 소그룹 정보={}",splitGroup);
     }
 

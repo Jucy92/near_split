@@ -5,6 +5,7 @@ import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.service.SplitGroupService;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.Fetch;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +23,7 @@ import java.util.List;
 public class SplitGroupController {
     private final SplitGroupService splitGroupService;
 
+    @GetMapping
     public ResponseEntity<Page<SplitGroupResponse>> getAllGroup() {
         Sort sort = Sort.by(Sort.Direction.DESC, "CreatedAt");
         //Sort sort = Sort.by(Sort.Direction.valueOf(sortDirect), sortBy);  // 단일 정렬
@@ -30,9 +32,8 @@ public class SplitGroupController {
         PageRequest pageRequest = PageRequest.of(0, 10, sort);
 
         Page<SplitGroup> splitGroupsPage = splitGroupService.getAllRecruitingGroups(pageRequest);
-        Page<SplitGroupResponse> responsePage = splitGroupsPage.map(SplitGroupResponse::from);
-
-
+        Page<SplitGroupResponse> responsePage = splitGroupsPage.map(SplitGroupResponse::from);      // Entity -> DTO 변경 작업
+        
         return ResponseEntity.ok().body(responsePage);
     }
 
@@ -62,15 +63,31 @@ public class SplitGroupController {
         return ResponseEntity.ok().body(SplitGroupResponse.from(splitGroup));
     }
 
+    @PatchMapping("/{groupId}")
+    public ResponseEntity<?> updateSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId
+                                            , @RequestBody SplitGroupRequest groupRequest) {
+        return ResponseEntity.ok().body(splitGroupService.updateSplitGroup(groupId, userId, groupRequest));
+    }
+    @DeleteMapping("/{groupId}")
+    public ResponseEntity<?> deleteSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok().body(splitGroupService.deleteSplitGroup(groupId, userId));
+    }
+
     @PostMapping("/{groupId}/join")
     public ResponseEntity<?> joinSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
         Participant participant = splitGroupService.joinSplitGroup(groupId, userId);
         return ResponseEntity.ok().body(participant);
     }
 
+    @DeleteMapping("/{groupId}/join")
+    public ResponseEntity<?> cancelJoin(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok().body(splitGroupService.cancelJoin(groupId, userId)); // 삭제된 내용 전달
+    }
+
     @PostMapping("/{groupId}/approve")
     public ResponseEntity<ParticipantResponse> approveSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long hostId,
                                                                  @Validated @RequestBody ParticipantActionRequest participantActionRequest) {
+
         Participant updated = splitGroupService.approveParticipant(groupId, hostId, participantActionRequest);
         return ResponseEntity.ok(ParticipantResponse.from(updated));  // 204 리턴
     }

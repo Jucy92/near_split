@@ -3,7 +3,21 @@ spring:
     name: nearsplit
 
   #jackson:
-  #  default-property-inclusion: non_null  # 전역 설정 DTO 응답 시 null 값은 JSON 리스트에서 제외하고 보내는 설정 / java <-> JSON NULL exclude setting
+    # ===== 필수 설정 =====
+    # 🔵 REQUEST (요청): JSON → DTO
+    #mapper:
+     # default-setter-info: skip  # null 값은 setter 호출 안 함 → 기존 값 유지   
+      #  ㄴ> 근데 신기하게.. yml 파일에서 요청 설정하는 게 없을까 했는데.. 메모 같은거에서 내용 사용 했다가 공백으로 바꾸는 경우 수정이 안됨... 이런 이슈
+
+    # 🟢 RESPONSE (응답): DTO → JSON
+    #default-property-inclusion: non_null  # null 필드는 JSON에 포함 안 함
+
+    # ===== 권장 설정 (선택) =====
+    #deserialization:
+     # fail-on-unknown-properties: false  # 알 수 없는 필드 무시 (API 버전 호환성)
+    #serialization:
+     # write-dates-as-timestamps: false  # LocalDate를 ISO-8601 형식으로 ("2025-01-09")
+
 
   profiles:
     active: dev

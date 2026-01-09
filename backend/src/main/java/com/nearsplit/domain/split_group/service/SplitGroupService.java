@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -40,9 +41,14 @@ public class SplitGroupService {
         newGroup.setPickupLocation(request.getPickupLocation());
         newGroup.setTotalPrice(request.getTotalPrice());
         newGroup.setMaxParticipants(request.getMaxParticipants());
+        if (request.getClosedAt() != null) {
+            if (!request.getClosedAt().isAfter(LocalDate.now())) {
+                throw new IllegalArgumentException("마감일이 내일 이후로 설정해야 합니다.");
+            }
+        }
         newGroup.setClosedAt(request.getClosedAt());
         SplitGroup saved = splitGroupRepository.save(newGroup);
-        log.info("생성된 그룹={}",saved);
+        log.info("생성된 그룹={}", saved);
 
         // 새로운 그룹의 사용자 추가
         Participant participant = new Participant();
@@ -50,10 +56,10 @@ public class SplitGroupService {
         participant.setUserId(userId);
         participant.setStatus(ParticipantStatus.APPROVED);  // 방장(생성자 = 참여자) 인 경우라 바로 승인 처리
         participant.setShareAmount(saved.getTotalPrice()
-                .divide(BigDecimal.valueOf(saved.getMaxParticipants()),2, RoundingMode.HALF_DOWN)); // 나누는 수, 소수점 2자리에서, 반올림
+                .divide(BigDecimal.valueOf(saved.getMaxParticipants()), 2, RoundingMode.HALF_DOWN)); // 나누는 수, 소수점 2자리에서, 반올림
 
         participantRepository.save(participant);
-        log.info("생성된 그룹 사용자={}",participant);
+        log.info("생성된 그룹 사용자={}", participant);
 
 
         return saved;
@@ -85,6 +91,64 @@ public class SplitGroupService {
                 .orElseThrow(() -> new IllegalArgumentException("조회할 수 없는 그룹 번호입니다."));
 
     }
+    @Transactional
+    public SplitGroup updateSplitGroup(Long splitGroupId, Long userId, SplitGroupRequest request) {
+        SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("수정 권한이 없습니다."));
+
+        boolean hasParticipants = target.getCurrentParticipants() > 1;
+
+        if (request.getTitle() != null) {
+            if (hasParticipants) {
+                throw new IllegalArgumentException("참여자가 있는 경우 제목 변경이 불가합니다.");
+            }
+            target.setTitle(request.getTitle());
+        }
+        if (request.getTotalPrice() != null) {
+            if (hasParticipants) {
+                throw new IllegalArgumentException("참여자가 있는 경우 총 금액이 불가합니다.");
+            }
+            target.setTotalPrice(request.getTotalPrice());
+        }
+        if (request.getMaxParticipants() != null) {
+            if (hasParticipants) {
+                throw new IllegalArgumentException("참여자가 있는 경우 총 인원 변경이 불가합니다.");
+            }
+            if (request.getMaxParticipants() < 2) {
+                throw new IllegalArgumentException("총 인원이 2명 이상이어야 합니다.");
+            }
+            target.setMaxParticipants(request.getMaxParticipants());
+        }
+        if (request.getPickupLocation() != null) target.setPickupLocation(request.getPickupLocation());
+        if (request.getPickupLocationGeo() != null) target.setPickupLocationGeo(request.getPickupLocationGeo());
+
+        if (request.getClosedAt() != null) {
+            if (!request.getClosedAt().isAfter(LocalDate.now())) {
+                throw new IllegalArgumentException("마감일이 내일 이후로 설정해야 합니다.");
+            }
+            target.setClosedAt(request.getClosedAt());
+        }
+
+        return target;
+    }
+
+    @Transactional
+    public SplitGroup deleteSplitGroup(Long splitGroupId, Long userId) {
+        SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("그룹 또는 수정 권한을 찾을 수 없습니다."));
+
+        if (target.getCurrentParticipants() > 1) {
+            throw new IllegalArgumentException("참여자가 있는 경우 삭제가 불가 합니다.");
+        }
+        if (target.getStatus() != SplitGroupStatus.RECRUITING) {
+            throw new IllegalArgumentException("모집 중인 상태에서만 삭제가 가능합니다.");
+        }
+
+        target.setStatus(SplitGroupStatus.CANCELLED);
+        splitGroupRepository.save(target);  // 삭제가 아닌 상태 변경인 것을 명시적으로 표시하기 위함
+        return target;
+    }
+
 
     @Transactional
     public Participant joinSplitGroup(Long splitGroupId, Long userId) {
@@ -113,6 +177,20 @@ public class SplitGroupService {
     }
 
     @Transactional
+    public Participant cancelJoin(Long groupId, Long userId) {
+        Participant participant = participantRepository.findBySplitGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("참여 신청 내역이 없습니다."));
+
+        if (ParticipantStatus.PENDING != participant.getStatus()) {
+            throw new IllegalArgumentException("대기 중인 신청만 취소할 수 있습니다.");
+        }
+
+        participantRepository.delete(participant);
+
+        return participant;
+    }
+
+    @Transactional
     public Participant approveParticipant(Long splitGroupId, Long hostId, ParticipantActionRequest actionRequest) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
@@ -129,13 +207,18 @@ public class SplitGroupService {
         }
 
         participant.setStatus(ParticipantStatus.APPROVED);
-        participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants()),2,RoundingMode.HALF_DOWN));
+        participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants()), 2, RoundingMode.HALF_DOWN));
 
-        findGroup.setCurrentParticipants(findGroup.getCurrentParticipants()+1);
+        findGroup.setCurrentParticipants(findGroup.getCurrentParticipants() + 1);
+        // 현재 인원 = 총 모집 인원 => 상태 풀로 변경
+        if (findGroup.getMaxParticipants() == findGroup.getCurrentParticipants()) {
+            findGroup.setStatus(SplitGroupStatus.FULL);
+        }
 
         return participant;
 
     }
+
     @Transactional
     public Participant rejectedParticipant(Long splitGroupId, Long hostId, ParticipantActionRequest actionRequest) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
@@ -168,6 +251,4 @@ public class SplitGroupService {
         long count = participantRepository.countBySplitGroupIdAndStatus(splitGroupId, ParticipantStatus.APPROVED);
         return count;
     }
-
-
 }
