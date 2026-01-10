@@ -353,4 +353,8 @@ class SplitGroupControllerTest {
                 .andExpect(jsonPath("$.error").value("방장만 거절할 수 있습니다."));
     }
 
+    @Test
+    void 그룹_전체_조회_성공() {
+
+    }
 }
