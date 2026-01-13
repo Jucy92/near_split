@@ -137,11 +137,11 @@ public class SplitGroupService {
         SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("그룹 또는 수정 권한을 찾을 수 없습니다."));
 
-        if (target.getCurrentParticipants() > 1) {
-            throw new IllegalArgumentException("참여자가 있는 경우 삭제가 불가 합니다.");
-        }
         if (target.getStatus() != SplitGroupStatus.RECRUITING) {
             throw new IllegalArgumentException("모집 중인 상태에서만 삭제가 가능합니다.");
+        }
+        if (target.getCurrentParticipants() > 1) {
+            throw new IllegalArgumentException("참여자가 있는 경우 삭제가 불가 합니다.");
         }
 
         target.setStatus(SplitGroupStatus.CANCELLED);
