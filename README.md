@@ -47,19 +47,31 @@
 
 ## 🎯 개발 진행 상황
 
-**✅ Week 1: 인증 및 사용자 관리** (진행 중)
+**✅ Week 1: 인증 및 사용자 관리** (완료)
 - [x] Day 1-2: User 엔티티 및 Repository 작성 완료
 - [x] Day 3-4: JWT 인증 및 AuthService 구현 완료
   - Spring Security 설정
   - JWT 토큰 생성/검증 (쿠키 기반)
   - 회원가입/로그인 API
-- [ ] Day 5-7: User API 작성 중
-  - JWT 인증 필터 작성
+- [x] Day 5-7: User API 완료
+  - JWT 인증 필터 작성 (Authorization 헤더 + 쿠키 지원)
   - 프로필 조회/수정 API
+  - 테스트 코드 작성 완료
 
-**⬜ Week 2: 상품 및 소분 글** (대기)
-**⬜ Week 3: 채팅 및 알림** (대기)
-**⬜ Week 4: 결제 및 거래** (대기)
+**✅ Week 2: 소분 그룹 관리** (완료)
+- [x] Day 1-3: SplitGroup & Participant 엔티티 및 Repository
+- [x] Day 4-5: 소분 그룹 기본 API
+  - 그룹 생성, 조회, 참여 신청, 승인, 거절
+  - 내 그룹 목록 조회, 참여자 수 조회
+- [x] Day 6-7: 추가 API
+  - 전체 그룹 목록 조회 (페이징)
+  - 그룹 수정 (PATCH), 삭제 (Soft Delete)
+  - 참여 취소
+  - 모집 완료 시 FULL 상태 자동 변경
+  - 테스트 코드 작성 완료
+
+**⬜ Week 3: 상품/채팅/알림** (예정)
+**⬜ Week 4: 결제 및 거래** (예정)
 
 ---
 
