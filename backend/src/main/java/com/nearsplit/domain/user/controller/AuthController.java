@@ -1,6 +1,6 @@
 package com.nearsplit.domain.user.controller;
 
-import com.nearsplit.common.JwtUtil;
+import com.nearsplit.common.security.JwtUtil;
 import com.nearsplit.domain.user.dto.LoginRequest;
 import com.nearsplit.domain.user.dto.LoginResponse;
 import com.nearsplit.domain.user.dto.RegisterRequest;
@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 

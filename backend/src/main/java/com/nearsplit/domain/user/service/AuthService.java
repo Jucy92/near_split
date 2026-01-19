@@ -1,13 +1,11 @@
 package com.nearsplit.domain.user.service;
 
-import com.nearsplit.common.JwtUtil;
 import com.nearsplit.domain.user.dto.LoginRequest;
 import com.nearsplit.domain.user.dto.LoginResponse;
 import com.nearsplit.domain.user.dto.RegisterRequest;
 import com.nearsplit.domain.user.dto.UserResponse;
 import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

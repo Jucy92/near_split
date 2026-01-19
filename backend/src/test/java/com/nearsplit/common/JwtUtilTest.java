@@ -1,5 +1,6 @@
 package com.nearsplit.common;
 
+import com.nearsplit.common.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

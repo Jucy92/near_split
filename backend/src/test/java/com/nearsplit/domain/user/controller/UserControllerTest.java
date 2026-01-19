@@ -1,11 +1,9 @@
 package com.nearsplit.domain.user.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nearsplit.common.JwtUtil;
+import com.nearsplit.common.security.JwtUtil;
 import com.nearsplit.domain.user.dto.RegisterRequest;
 import com.nearsplit.domain.user.dto.UserUpdateRequest;
-import com.nearsplit.domain.user.repository.UserRepository;
 import com.nearsplit.domain.user.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.transaction.Transactional;
@@ -18,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 

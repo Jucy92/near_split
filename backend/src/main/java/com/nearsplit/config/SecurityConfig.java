@@ -1,6 +1,6 @@
 package com.nearsplit.config;
 
-import com.nearsplit.common.JwtAuthenticationFilter;
+import com.nearsplit.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

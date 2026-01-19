@@ -1,5 +1,7 @@
 package com.nearsplit.domain.split_group.service;
 
+import com.nearsplit.common.exception.BusinessException;
+import com.nearsplit.common.exception.ErrorCode;
 import com.nearsplit.domain.split_group.dto.*;
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.ParticipantStatus;
@@ -153,10 +155,10 @@ public class SplitGroupService {
     @Transactional
     public Participant joinSplitGroup(Long splitGroupId, Long userId) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND, "존재하지 않는 그룹입니다."));
 
         if (participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
-            throw new IllegalArgumentException("이미 참여 신청한 그룹입니다.");
+            throw new IllegalArgumentException("이미 참여 신청한 그룹입니다."); // 다 IllegalArgumentException으로 처리하면 프론트에서 C001 오류 코드로 전부 응답 받음..
         }
 
         if (!SplitGroupStatus.RECRUITING.equals(findGroup.getStatus())) {

@@ -1,10 +1,9 @@
 package com.nearsplit.domain.split_group.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nearsplit.common.JwtUtil;
+import com.nearsplit.common.security.JwtUtil;
 import com.nearsplit.domain.split_group.dto.ParticipantActionRequest;
 import com.nearsplit.domain.split_group.dto.SplitGroupRequest;
-import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
