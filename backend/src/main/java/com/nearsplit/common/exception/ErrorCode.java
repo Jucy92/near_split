@@ -24,6 +24,7 @@ public enum ErrorCode {
 
     // 사용자 에러 (U: User)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다"),
+    //USER_NOT_MATCHED(HttpStatus.NOT)
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "U002", "이미 사용 중인 이메일입니다"),
 
     // 소분 그룹 에러 (G: Group)

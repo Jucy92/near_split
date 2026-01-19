@@ -17,7 +17,7 @@ import java.util.Map;
  * fileName     : GlobalExceptionHandler
  * author       : user
  * date         : 2026-01-19(월)
- * description   :
+ * description   : 예외 처리
  * ===================================================
  * DATE                   AUTHOR          NOTE
  * ---------------------------------------------------

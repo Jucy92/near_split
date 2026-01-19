@@ -85,12 +85,14 @@ public class SplitGroupService {
     }
 
     public SplitGroup getSplitGroup(Long splitGroupId, Long userId) {
+        SplitGroup group = splitGroupRepository.findById(splitGroupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
         if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {   // 해당 groupId에 userId가 참여자로 있는 지 체크
-            throw new IllegalArgumentException("권한이 없는 접근 입니다.");
+            throw new IllegalArgumentException("권한이 없는 접근 입니다.");   // 근데 이게 맞냐.. 서로 다른 레포지토리를 이렇게 조회하는게..? 조인을 하거나 DSL으로 만들거나
         }
 
-        return splitGroupRepository.findById(splitGroupId)
-                .orElseThrow(() -> new IllegalArgumentException("조회할 수 없는 그룹 번호입니다."));
+        return group;
 
     }
     @Transactional

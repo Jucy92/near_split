@@ -7,7 +7,7 @@ import lombok.Getter;
  * fileName     : BusinessException
  * author       : user
  * date         : 2026-01-19(월)
- * description   :
+ * description   : 서비스 화면에서 예외 발생 시 ErrorCode(코드,내용)에 정의 해놓은 예외 코드 사용하기 위해 추가
  * ===================================================
  * DATE                   AUTHOR          NOTE
  * ---------------------------------------------------
