@@ -37,9 +37,10 @@ public enum ErrorCode {
     INVALID_PARTICIPANT_STATUS(HttpStatus.BAD_REQUEST, "G007", "유효하지 않은 참여 상태입니다"),
     CANNOT_MODIFY_WITH_PARTICIPANTS(HttpStatus.BAD_REQUEST, "G008", "참여자가 있는 경우 수정이 불가합니다"),
     CANNOT_DELETE_WITH_PARTICIPANTS(HttpStatus.BAD_REQUEST, "G009", "참여자가 있는 경우 삭제가 불가합니다"),
-    INVALID_DEADLINE(HttpStatus.BAD_REQUEST, "G010", "마감일은 내일 이후로 설정해야 합니다");
+    INVALID_DEADLINE(HttpStatus.BAD_REQUEST, "G010", "마감일은 내일 이후로 설정해야 합니다"),
     
     // 상품 에러
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 상품번호 입니다");
 
     private final HttpStatus status;
     private final String code;
