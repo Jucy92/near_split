@@ -7,12 +7,25 @@ import com.nearsplit.domain.product.entity.Product;
 import com.nearsplit.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+
+/**
+ * packageName  : com.nearsplit.domain.product.service
+ * fileName     : ProductService
+ * author       : user
+ * date         : 2026-01-20(화)
+ * description   :
+ * ===================================================
+ * DATE                   AUTHOR          NOTE
+ * ---------------------------------------------------
+ * 2026-01-20(화)                user            최초 생성
+ */
 
 @Service
 @Slf4j
@@ -35,10 +48,8 @@ public class ProductService {
 
         // API 정보가 들어 있으면 중복 체크
         if (newProduct.getExternalId() != null && newProduct.getExternalSource() != null) {
-            Optional<Product> existing = productRepository.findByExternalIdAndExternalSource(
-                productRequest.getExternalId(),
-                productRequest.getExternalSource()
-            );
+            Optional<Product> existing =
+                    productRepository.findByExternalIdAndExternalSource(productRequest.getExternalId(),productRequest.getExternalSource());
 
             // 있으면 가격만 업데이트하고 반환
             if (existing.isPresent()) {
