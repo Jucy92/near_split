@@ -17,20 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NickNameGenerator nickNameGenerator;
 
     @Transactional
     public Long register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 등록된 이메일입니다.");
         }
-        if (userRepository.existsByNickname(request.getNickname())) {
-            throw new IllegalArgumentException("이미 등록된 닉네임입니다.");
-        }
+        //if (userRepository.existsByNickname(request.getNickname())) {     // 여긴 필요 없고 수정 할 때 체크
+        //    throw new IllegalArgumentException("이미 등록된 닉네임입니다.");
+        //}
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                .nickname(request.getNickname())
+                .nickname(nickNameGenerator.generate())
                 .build();
 
         User saved = userRepository.save(user);

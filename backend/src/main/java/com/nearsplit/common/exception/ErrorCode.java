@@ -26,6 +26,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다"),
     //USER_NOT_MATCHED(HttpStatus.NOT)
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "U002", "이미 사용 중인 이메일입니다"),
+    EXIST_NICK_NAME(HttpStatus.BAD_REQUEST, "U003", "이미 사용 중인 닉네임입니다"),
 
     // 소분 그룹 에러 (G: Group)
     GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "G001", "존재하지 않는 그룹입니다"),

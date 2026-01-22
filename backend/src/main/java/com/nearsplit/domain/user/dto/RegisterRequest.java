@@ -14,7 +14,7 @@ public class RegisterRequest {
     private String password;
     @NotBlank(message = "필수 값 입니다.")
     private String name;
-    @NotBlank(message = "필수 값 입니다.")
-    private String nickname;
+//    @NotBlank(message = "필수 값 입니다.")
+//    private String nickname;
 
 }

@@ -10,7 +10,9 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(Long id);
     Optional<User> findByEmail(String email);
-    Optional<User> findByNickname(String nickname);
+    Optional<User> findByNickname(String nickname); // 하늘소 만들었다 -> 다른 사용자가 보고 하늘소774 만들었다? -> 하늘소 지웠다? -> 닉네임으로 조회하니 상관없다.
+
+    int countByNicknameStartingWith(String nickname);
 
     boolean existsByEmail(String email);
     boolean existsByNickname(String nickname);

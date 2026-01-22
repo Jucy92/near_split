@@ -26,7 +26,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
+    public void configureMessageBroker(MessageBrokerRegistry registry) {    // 메시지 라우팅 설정
         // 메시지 브로커 설정
         // "/topic"으로 시작하는 메시지는 메시지 브로커가 처리 (브로드캐스트)
         registry.enableSimpleBroker("/topic");
@@ -36,7 +36,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
+    public void registerStompEndpoints(StompEndpointRegistry registry) {    // 웹소켓 연결 설정
         // WebSocket 연결 엔드포인트
         registry.addEndpoint("/ws")
                 .addInterceptors(jwtHandshakeInterceptor)   // jwt 토큰 가져와서 userId webSocket 세션에 저장
