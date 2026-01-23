@@ -78,6 +78,17 @@ apiClient.interceptors.response.use(
       // 401 Unauthorized: 인증 실패 (JWT 토큰 만료 or 없음)
       if (status === 401) {
         alert('로그인이 필요합니다.')
+
+        /*    // 일단 지금 서버에서 401 에러가 아니라 403 에러를 뱉어서 그거 먼저 수정 해야 할듯..
+        // ⭐ 핵심: localStorage도 클리어!
+        localStorage.removeItem('isLoggedIn')
+        // 이미 로그인 페이지가 아닐 때만 이동
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'  // 강제 이동
+        }
+        return Promise.reject(error)  // alert 안 띄우고 바로 reject
+        */
+
         window.location.href = '/login'  // 로그인 페이지로 강제 이동
       }
       // 403 Forbidden: 권한 없음
