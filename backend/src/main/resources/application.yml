@@ -36,7 +36,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update          #create - 삭제 후 다시 생성 / create-drop - 종료 시 테이블 삭제
     show-sql: true              # SQL Output(출력)
     properties:
       hibernate:

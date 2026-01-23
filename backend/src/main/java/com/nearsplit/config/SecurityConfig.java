@@ -1,9 +1,12 @@
 package com.nearsplit.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nearsplit.common.exception.ErrorCode;
 import com.nearsplit.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +26,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -35,10 +39,23 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())  // 개발 환경에서 CSRF 비활성화
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // CORS 설정 적용
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .anonymous(anonymous -> anonymous.disable())                        // 익명 사용자 자동 생성 비활성화
+                .exceptionHandling(eh -> eh                                         // 발생하는 401, 403 에러에 대해서 응답 설정
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.UNAUTHORIZED));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType("application/json");
+                            response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.FORBIDDEN));
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/h2-console/**").permitAll()  // H2 Console 허용
-                        .requestMatchers("/api/auth/**").permitAll()     // 회원가입/로그인 허용
-                        .anyRequest().authenticated()  // 토큰 개발 완료해서 인증 처리
+                                .requestMatchers("/h2-console/**").permitAll()  // H2 Console 허용
+                                .requestMatchers("/api/auth/**").permitAll()     // 회원가입/로그인 허용
+                                .anyRequest().authenticated()  // 토큰 개발 완료해서 인증 처리
 //                        .anyRequest().permitAll()  // 일단 개발 중이므로 모든 요청 허용
                 )
                 .headers(headers -> headers

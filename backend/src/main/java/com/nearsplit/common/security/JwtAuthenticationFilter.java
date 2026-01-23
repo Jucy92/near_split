@@ -22,7 +22,7 @@ import java.util.Collections;
 
 @RequiredArgsConstructor
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRequestFilter 인터페이스 = 모든 요청마다 실행되는 보안 필터
     private final JwtUtil jwtUtil;
 
     private final RequestMatcher passingPaths = new OrRequestMatcher(
@@ -55,7 +55,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         //SecurityContext ctx = SecurityContextHolder.getContext();
         //ctx.setAuthentication(auth);  // 이 과정을 축약해서 아래처럼.. 체이닝..
-        SecurityContextHolder.getContext().setAuthentication(auth);
+        SecurityContextHolder.getContext().setAuthentication(auth); // 사용자 정보 => 설정 없이 doFilter 되더라도 다음 필터에서 null 값인 익명사용자 자동 생성함
 
         filterChain.doFilter(request, response);
     }

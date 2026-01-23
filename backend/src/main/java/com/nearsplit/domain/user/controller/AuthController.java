@@ -1,5 +1,6 @@
 package com.nearsplit.domain.user.controller;
 
+import com.nearsplit.common.dto.ApiResponse;
 import com.nearsplit.common.security.JwtUtil;
 import com.nearsplit.domain.user.dto.LoginRequest;
 import com.nearsplit.domain.user.dto.LoginResponse;
@@ -29,7 +30,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         LoginResponse loginResponse = authService.login(request);
 
         String token = jwtUtil.generateToken(loginResponse.getUserResponse().getId());
@@ -43,7 +44,8 @@ public class AuthController {
         response.addCookie(cookie);
 
 
-        return ResponseEntity.ok().body(loginResponse);
+        return ResponseEntity.ok().body(ApiResponse.success(loginResponse));
+        //return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
     @PostMapping("/logout")

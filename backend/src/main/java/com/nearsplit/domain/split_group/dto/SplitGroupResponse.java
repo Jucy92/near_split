@@ -18,7 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SplitGroupResponse {
     // 그룹방 정보 (SplitGroup)
-    private Long SplitGroupId;
+    private Long id;
     private String title;
     private BigDecimal totalPrice;
     private int maxParticipants;
@@ -34,7 +34,7 @@ public class SplitGroupResponse {
     public static SplitGroupResponse from(SplitGroup splitGroup) {
 
         return SplitGroupResponse.builder()
-                .SplitGroupId(splitGroup.getId())
+                .id(splitGroup.getId())
                 .title(splitGroup.getTitle())
                 .totalPrice(splitGroup.getTotalPrice())
                 .maxParticipants(splitGroup.getMaxParticipants())
