@@ -121,7 +121,7 @@ export default {
   methods: {
     // 로그인 처리 함수 (form 제출 시 실행)
     async handleLogin() {
-      this.loading = true       // 로딩 시작
+      this.loading = true       // 로딩 시작 (버튼 비활성화)
       this.errorMessage = ''    // 이전 에러 메시지 초기화
 
       try {
@@ -139,11 +139,12 @@ export default {
         // }
 
         // 쿠키에 JWT 토큰 자동 저장됨 (백엔드에서 Set-Cookie 헤더)
+        localStorage.setItem('isLoggedIn', 'true')  // 추가
 
         // 그룹 목록 페이지로 이동 (Vue Router 사용)
         // this.$router: Vue Router 인스턴스
         // push(): 페이지 이동 (브라우저 히스토리에 추가)
-        this.$router.push('/groups')
+        this.$router.push('/home')
 
       } catch (error) {
         // 로그인 실패
