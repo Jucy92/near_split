@@ -35,6 +35,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRe
                     new AntPathRequestMatcher("/favicon.ico")
             ))
     );
+    private final RequestMatcher skipPaths = new OrRequestMatcher(
+            new ArrayList<>(Arrays.asList(
+                    new AntPathRequestMatcher("/api/auth/**")
+            ))
+    );
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -43,38 +48,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRe
             response.setStatus(HttpServletResponse.SC_NO_CONTENT);
             return; // 그냥 리턴을 해버리면 브라우저에서 재요청/오류 처리 => 상태 메시지 담아주고 리턴
         }
+        if (skipPaths.matches(request)) {
+            doFilter(request, response, filterChain);
+            return;
+        }
 
         String token = resolveToken(request);
 
-        // 토큰이 없거나 유효하지 않으면 다음 필터로
+        // 토큰이 없으면 다음 필터로
         if (token == null ) {
             filterChain.doFilter(request, response);
             return;
         }
 
-
+        // 필터는 인증 처리만!
         TokenStatus tokenStatus = jwtUtil.validToken(token);
 
         switch (tokenStatus) {
+            case VALID:
+                // 토큰에 정보가 있으면, userId 추출하고 인증 정보 설정
+                Long userId = jwtUtil.getUserId(token);
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+
+                //SecurityContext ctx = SecurityContextHolder.getContext();
+                //ctx.setAuthentication(auth);  // 이 과정을 축약해서 아래처럼.. 체이닝..
+                SecurityContextHolder.getContext().setAuthentication(auth); // 사용자 정보 => 설정 없이 doFilter 되더라도 다음 필터에서 null 값인 익명사용자 자동 생성함
+
+                filterChain.doFilter(request, response);
+                break;
+            case EXPIRED:
+                response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.ACCESS_EXPIRED));
+                return;
+            case INVALID_SIGNATURE, MALFORMED:
+                response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.INVALID_TOKEN));
+                return;
         }
-        if (TokenStatus.VALID.equals(tokenStatus)) {
-
-            // 토큰에 정보가 있으면, userId 추출하고 인증 정보 설정
-            Long userId = jwtUtil.getUserId(token);
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-
-            //SecurityContext ctx = SecurityContextHolder.getContext();
-            //ctx.setAuthentication(auth);  // 이 과정을 축약해서 아래처럼.. 체이닝..
-            SecurityContextHolder.getContext().setAuthentication(auth); // 사용자 정보 => 설정 없이 doFilter 되더라도 다음 필터에서 null 값인 익명사용자 자동 생성함
-
-            filterChain.doFilter(request, response);
-        } else if (TokenStatus.EXPIRED.equals(tokenStatus)) {
-            response.setStatus(401);
-            response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.ACCESS_EXPIRED));
-        }
-
-
     }
 
     private String resolveToken(HttpServletRequest request) {

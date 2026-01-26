@@ -85,7 +85,7 @@ public class JwtUtil {
             return TokenStatus.MALFORMED;
         } catch (Exception e) {
             log.error("토큰 검증 실패: {}", e.getMessage());
-            return new Exception(e);
+            throw new RuntimeException("토큰 검증 실패", e);
         }
         return TokenStatus.VALID;
     }

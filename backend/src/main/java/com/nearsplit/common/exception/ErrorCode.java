@@ -1,5 +1,6 @@
 package com.nearsplit.common.exception;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
@@ -15,14 +16,19 @@ import org.springframework.http.HttpStatus;
  * 2026-01-17(토)                user            최초 생성
  */
 @Getter
+@JsonFormat(shape = JsonFormat.Shape.OBJECT)        // 필터나 Config 에서 직접 문자열 추가할 때 enum 사용하기 위해 추가
 public enum ErrorCode {
     // 공통 에러 (C: Common)
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력입니다"),
     FORBIDDEN(HttpStatus.FORBIDDEN,"C002","권한이 없습니다"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"C999", "서버 오류가 발생했습니다"),
+
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증이 필요합니다"),
-    ACCESS_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH-002", "토큰이 만료됐습니다"),
-    // REFRESH_EXPIRED , TOKEN_EXPIRED
+    ACCESS_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH-002", "액세스 토큰이 만료됐습니다"),
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH-003", "유효하지 않은 토큰입니다"),
+    REFRESH_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH-004", "갱신 토큰이 만료됐습니다"),
+    REFRESH_INVALID(HttpStatus.UNAUTHORIZED, "AUTH-005", "유효하지 않은 갱신 토큰입니다"),
+
 
     // 사용자 에러 (U: User)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다"),
