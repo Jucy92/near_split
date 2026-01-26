@@ -28,7 +28,7 @@ public class JwtUtilTest {
         // then
         System.out.println("생성된 토큰: " + token);
         assertThat(token).isNotNull();
-        assertThat(jwtUtil.validToken(token)).isTrue();
+        assertThat(jwtUtil.validToken(token)).isEqualTo(TokenStatus.VALID);
         assertThat(jwtUtil.getUserId(token)).isEqualTo(userId);
 
         System.out.println("✅ 토큰 검증 성공!");

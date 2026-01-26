@@ -1,5 +1,6 @@
 package com.nearsplit.common.security;
 
+import com.nearsplit.common.exception.ErrorCode;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
@@ -39,6 +40,23 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateRefreshToken(Long id) {
+        Date now = new Date();
+        Date expireDate = new Date(now.getTime() + 604_800_000);    // 7일
+
+
+        return Jwts.builder()
+                .subject(String.valueOf(id))
+                .issuedAt(now)
+                .expiration(expireDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public String refreshToken(Long id) {
+        return generateToken(id);
+    }
+
     public Long getUserId(String token) {
         return Long.parseLong(
                 Jwts.parser()
@@ -47,24 +65,29 @@ public class JwtUtil {
                         .parseSignedClaims(token)
                         .getPayload()
                         .getSubject()
-                );
+        );
     }
 
-    public boolean validToken(String token) {
+
+    public TokenStatus validToken(String token) {
         try {
             /*Jws<Claims> claimsJws = */
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
-            return true;
+
         } catch (ExpiredJwtException e) {
             log.error("만료된 토큰입니다: {}", e.getMessage());
+            return TokenStatus.EXPIRED;
         } catch (SignatureException e) {
             log.error("잘못된 서명입니다: {}", e.getMessage());
+            return TokenStatus.INVALID_SIGNATURE;
         } catch (MalformedJwtException e) {
             log.error("잘못된 토큰 형식입니다: {}", e.getMessage());
+            return TokenStatus.MALFORMED;
         } catch (Exception e) {
             log.error("토큰 검증 실패: {}", e.getMessage());
+            return new Exception(e);
         }
-        return false;
+        return TokenStatus.VALID;
     }
 
 }

@@ -1,5 +1,7 @@
 package com.nearsplit.common.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nearsplit.common.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +26,7 @@ import java.util.Collections;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRequestFilter 인터페이스 = 모든 요청마다 실행되는 보안 필터
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
     private final RequestMatcher passingPaths = new OrRequestMatcher(
             new ArrayList<>(Arrays.asList(
@@ -44,20 +47,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRe
         String token = resolveToken(request);
 
         // 토큰이 없거나 유효하지 않으면 다음 필터로
-        if (token == null || !jwtUtil.validToken(token)) {
+        if (token == null ) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 토큰에 정보가 있으면, userId 추출하고 인증 정보 설정
-        Long userId = jwtUtil.getUserId(token);
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
 
-        //SecurityContext ctx = SecurityContextHolder.getContext();
-        //ctx.setAuthentication(auth);  // 이 과정을 축약해서 아래처럼.. 체이닝..
-        SecurityContextHolder.getContext().setAuthentication(auth); // 사용자 정보 => 설정 없이 doFilter 되더라도 다음 필터에서 null 값인 익명사용자 자동 생성함
+        TokenStatus tokenStatus = jwtUtil.validToken(token);
 
-        filterChain.doFilter(request, response);
+        switch (tokenStatus) {
+        }
+        if (TokenStatus.VALID.equals(tokenStatus)) {
+
+            // 토큰에 정보가 있으면, userId 추출하고 인증 정보 설정
+            Long userId = jwtUtil.getUserId(token);
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
+
+            //SecurityContext ctx = SecurityContextHolder.getContext();
+            //ctx.setAuthentication(auth);  // 이 과정을 축약해서 아래처럼.. 체이닝..
+            SecurityContextHolder.getContext().setAuthentication(auth); // 사용자 정보 => 설정 없이 doFilter 되더라도 다음 필터에서 null 값인 익명사용자 자동 생성함
+
+            filterChain.doFilter(request, response);
+        } else if (TokenStatus.EXPIRED.equals(tokenStatus)) {
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write(objectMapper.writeValueAsString(ErrorCode.ACCESS_EXPIRED));
+        }
+
+
     }
 
     private String resolveToken(HttpServletRequest request) {

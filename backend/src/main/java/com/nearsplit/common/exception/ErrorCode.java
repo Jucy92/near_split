@@ -18,9 +18,11 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     // 공통 에러 (C: Common)
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력입니다"),
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "C002", "인증이 필요합니다"),
-    FORBIDDEN(HttpStatus.FORBIDDEN,"C003","권한이 없습니다"),
+    FORBIDDEN(HttpStatus.FORBIDDEN,"C002","권한이 없습니다"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"C999", "서버 오류가 발생했습니다"),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증이 필요합니다"),
+    ACCESS_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH-002", "토큰이 만료됐습니다"),
+    // REFRESH_EXPIRED , TOKEN_EXPIRED
 
     // 사용자 에러 (U: User)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 회원입니다"),

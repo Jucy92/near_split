@@ -56,7 +56,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             }
         }
         // 여기서 토큰 예외처리 해주고 싶은데.. 어차피 글로벌 예외도 생성해놔서 코드 하나 만들고 try-catch로 비즈니스 에러 터뜨려서 알려주면 되는데..
-        if (jwtUtil.validToken(token)) {
+        if (jwtUtil.validToken(token).equals("")) {
             Long userId = jwtUtil.getUserId(token);
             attributes.put("userId", userId);
             log.info("WebSocket 연결 성공 - userId: {}", userId);

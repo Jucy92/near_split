@@ -1,5 +1,6 @@
 package com.nearsplit.domain.split_group.controller;
 
+import com.nearsplit.common.dto.ApiResponse;
 import com.nearsplit.domain.split_group.dto.*;
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
@@ -58,9 +59,9 @@ public class SplitGroupController {
     }
 
     @GetMapping("/{groupId}")
-    public ResponseEntity<SplitGroupResponse> getSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+    public ResponseEntity<ApiResponse<SplitGroupResponse>> getSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
         SplitGroup splitGroup = splitGroupService.getSplitGroup(groupId, userId);
-        return ResponseEntity.ok().body(SplitGroupResponse.from(splitGroup));
+        return ResponseEntity.ok((ApiResponse.success(SplitGroupResponse.from(splitGroup))));
     }
 
     @PatchMapping("/{groupId}")
