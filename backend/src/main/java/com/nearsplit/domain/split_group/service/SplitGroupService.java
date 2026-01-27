@@ -52,6 +52,7 @@ public class SplitGroupService {
         SplitGroup saved = splitGroupRepository.save(newGroup);
         log.info("생성된 그룹={}", saved);
 
+        /*  // 무료나눔 선착순 2명! => 방장은 당연히 2명을 생각하지만, 실제로는 1명만 되는 문제가 있어서 방장 분리
         // 새로운 그룹의 사용자 추가
         Participant participant = new Participant();
         participant.setSplitGroup(saved);
@@ -62,7 +63,7 @@ public class SplitGroupService {
 
         participantRepository.save(participant);
         log.info("생성된 그룹 사용자={}", participant);
-
+        */
 
         return saved;
     }
@@ -102,7 +103,7 @@ public class SplitGroupService {
         SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("수정 권한이 없습니다."));
 
-        boolean hasParticipants = target.getCurrentParticipants() > 1;
+        boolean hasParticipants = target.getCurrentParticipants() > 0;
 
         if (request.getTitle() != null) {
             if (hasParticipants) {
@@ -120,8 +121,8 @@ public class SplitGroupService {
             if (hasParticipants) {
                 throw new IllegalArgumentException("참여자가 있는 경우 총 인원 변경이 불가합니다.");
             }
-            if (request.getMaxParticipants() < 2) {
-                throw new IllegalArgumentException("총 인원이 2명 이상이어야 합니다.");
+            if (request.getMaxParticipants() < 1) {
+                throw new IllegalArgumentException("모집 인원이 1명 이상이어야 합니다.");
             }
             target.setMaxParticipants(request.getMaxParticipants());
         }
@@ -146,7 +147,7 @@ public class SplitGroupService {
         if (target.getStatus() != SplitGroupStatus.RECRUITING) {
             throw new IllegalArgumentException("모집 중인 상태에서만 삭제가 가능합니다.");
         }
-        if (target.getCurrentParticipants() > 1) {
+        if (target.getCurrentParticipants() > 0) {
             throw new IllegalArgumentException("참여자가 있는 경우 삭제가 불가 합니다.");
         }
 
@@ -213,7 +214,7 @@ public class SplitGroupService {
         }
 
         participant.setStatus(ParticipantStatus.APPROVED);
-        participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants()), 2, RoundingMode.HALF_DOWN));
+        participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants() + 1), 2, RoundingMode.HALF_DOWN));
 
         findGroup.setCurrentParticipants(findGroup.getCurrentParticipants() + 1);
         // 현재 인원 = 총 모집 인원 => 상태 풀로 변경

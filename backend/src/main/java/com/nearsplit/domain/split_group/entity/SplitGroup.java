@@ -37,7 +37,7 @@ public class SplitGroup {
     private BigDecimal totalPrice;
     private int maxParticipants;
     @Builder.Default
-    private int currentParticipants = 1;
+    private int currentParticipants = 0;
     private String pickupLocation;
     private String pickupLocationGeo;
     private LocalDate pickupDate;               // 이건 생성 때가 아니라.. 파티원 다 모아지고 결정해서 입력하는게 낫겠지..?

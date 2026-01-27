@@ -1,11 +1,13 @@
 package com.nearsplit.config;
 
 import com.nearsplit.common.security.JwtUtil;
+import com.nearsplit.common.security.TokenStatus;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -30,7 +32,7 @@ import java.util.Map;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class JwtHandshakeInterceptor implements HandshakeInterceptor {
+public class JwtHandshakeInterceptor implements HandshakeInterceptor {  // HandshakeInterceptor WebSocket 연결 시 최초 1회만 실행
 
     private final JwtUtil jwtUtil;
 
@@ -55,13 +57,27 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 }
             }
         }
-        // 여기서 토큰 예외처리 해주고 싶은데.. 어차피 글로벌 예외도 생성해놔서 코드 하나 만들고 try-catch로 비즈니스 에러 터뜨려서 알려주면 되는데..
-        if (jwtUtil.validToken(token).equals("")) {
-            Long userId = jwtUtil.getUserId(token);
-            attributes.put("userId", userId);
-            log.info("WebSocket 연결 성공 - userId: {}", userId);
-            return true;
+        if (token != null) {
+            TokenStatus tokenStatus = jwtUtil.validToken(token);
+            switch (tokenStatus) {
+                case VALID:
+                    Long userId = jwtUtil.getUserId(token);
+                    attributes.put("userId", userId);
+                    log.info("WebSocket 연결 성공 - userId: {}", userId);
+                    return true;
+                case EXPIRED:
+                    log.warn("WebSocket 연결 거부 - 토큰 만료");
+                    response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return false;
+
+                default:
+                    log.warn("WebSocket 연결 거부 - 유효하지 않은 토큰: {}", tokenStatus);
+                    response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return false;
+            }
         }
+        // 여기서 토큰 예외처리 해주고 싶은데.. 어차피 글로벌 예외도 생성해놔서 코드 하나 만들고 try-catch로 비즈니스 에러 터뜨려서 알려주면 되는데..
+
         return false;
     }
 

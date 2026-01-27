@@ -54,7 +54,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                                 .requestMatchers("/h2-console/**").permitAll()  // H2 Console 허용
-                                .requestMatchers("/api/auth/**").permitAll()     // 회원가입/로그인 허용
+                                .requestMatchers("/api/auth/**").permitAll()    // 회원가입/로그인 허용
+                                .requestMatchers("/ws/**").permitAll()          // 웹 소켓 연결을 위한 허용
                                 .anyRequest().authenticated()  // 토큰 개발 완료해서 인증 처리
 //                        .anyRequest().permitAll()  // 일단 개발 중이므로 모든 요청 허용
                 )

@@ -25,6 +25,8 @@ public class SplitGroupResponse {
     private String pickupLocation;
     private String pickupLocationGeo;
     private SplitGroupStatus groupState;
+    private Long hostUserId;
+    private int currentParticipants;
     private LocalDate closedAt; // 마감일
     private LocalDate createdAt;
 
@@ -41,6 +43,8 @@ public class SplitGroupResponse {
                 .pickupLocation(splitGroup.getPickupLocation())
                 .pickupLocationGeo(splitGroup.getPickupLocationGeo())
                 .groupState(splitGroup.getStatus())
+                .hostUserId(splitGroup.getHostUserId())
+                .currentParticipants(splitGroup.getCurrentParticipants())
                 .closedAt(splitGroup.getClosedAt())
                 .createdAt(splitGroup.getCreatedAt().toLocalDate())
                 .participants(splitGroup.getParticipants().stream()

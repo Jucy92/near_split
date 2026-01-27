@@ -37,7 +37,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRe
     );
     private final RequestMatcher skipPaths = new OrRequestMatcher(
             new ArrayList<>(Arrays.asList(
-                    new AntPathRequestMatcher("/api/auth/**")
+                    new AntPathRequestMatcher("/api/auth/**"),
+                    new AntPathRequestMatcher(("/ws/**"))
             ))
     );
 
@@ -49,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // OncePerRe
             return; // 그냥 리턴을 해버리면 브라우저에서 재요청/오류 처리 => 상태 메시지 담아주고 리턴
         }
         if (skipPaths.matches(request)) {
-            doFilter(request, response, filterChain);
+            filterChain.doFilter(request, response);
             return;
         }
 

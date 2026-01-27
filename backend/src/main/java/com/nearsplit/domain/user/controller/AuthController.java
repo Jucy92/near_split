@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -77,6 +79,7 @@ public class AuthController {
                     cookie.setMaxAge(jwtUtil.getExpiration());
 
                     response.addCookie(cookie);
+                    log.info("토큰 갱신 성공");
                     return ResponseEntity.ok().body(ApiResponse.successWithMessage("토큰 갱신 성공"));
                 case EXPIRED:
                     deleteCookie(response);
