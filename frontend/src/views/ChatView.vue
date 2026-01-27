@@ -1,15 +1,37 @@
 <template>
+  <!--
+    채팅방 전체 컨테이너
+    container-fluid: Bootstrap 전체 너비 컨테이너
+    py-4: padding-y (위아래 여백) 4단위
+    height: 100vh: 화면 전체 높이
+  -->
   <div class="container-fluid py-4" style="height: 100vh;">
     <div class="row h-100">
+      <!--
+        col-12: 모바일에서 전체 너비
+        col-lg-8: 큰 화면에서 8칸 (12칸 중)
+        offset-lg-2: 왼쪽에서 2칸 띄움 (가운데 정렬 효과)
+      -->
       <div class="col-12 col-lg-8 offset-lg-2">
+        <!-- 채팅 카드 (세로로 가득 채움) -->
         <div class="card shadow h-100 d-flex flex-column">
-          <!-- 헤더 -->
+
+          <!-- ==================== 헤더 영역 ==================== -->
           <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
+              <!--
+                router-link: Vue Router의 링크 컴포넌트 (페이지 이동)
+                :to: 동적 바인딩으로 groupId를 포함한 URL 생성
+              -->
               <router-link :to="`/groups/${groupId}`" class="btn btn-outline-secondary btn-sm me-3">
                 &larr; 그룹
               </router-link>
               <h5 class="mb-0">채팅방</h5>
+              <!--
+                WebSocket 연결 상태 표시
+                :class: connected 값에 따라 클래스 동적 변경
+                connected가 true면 bg-success(초록), false면 bg-danger(빨강)
+              -->
               <span
                 class="badge ms-2"
                 :class="connected ? 'bg-success' : 'bg-danger'"
@@ -20,32 +42,42 @@
             <small class="text-muted">그룹 #{{ groupId }}</small>
           </div>
 
-          <!-- 메시지 영역 -->
+          <!-- ==================== 메시지 목록 영역 ==================== -->
+          <!--
+            ref="messageContainer": JavaScript에서 this.$refs.messageContainer로 접근 가능
+            flex-grow-1: 남은 공간 모두 차지 (카드 내에서)
+            overflow-auto: 내용이 넘치면 스크롤
+          -->
           <div
             ref="messageContainer"
             class="card-body flex-grow-1 overflow-auto"
             style="background: #f8f9fa;"
           >
-            <!-- 로딩 -->
+            <!-- 로딩 스피너: loading이 true일 때만 표시 -->
             <div v-if="loading" class="text-center py-5">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">로딩중...</span>
               </div>
             </div>
 
-            <!-- 메시지 목록 -->
+            <!-- 메시지 목록: loading이 false일 때 표시 -->
             <div v-else>
+              <!-- 메시지가 없을 때 안내 문구 -->
               <div v-if="messages.length === 0" class="text-center text-muted py-5">
                 아직 메시지가 없습니다. 첫 메시지를 보내보세요!
               </div>
 
+              <!--
+                v-for: messages 배열을 순회하며 각 메시지 렌더링
+                :key: Vue가 각 요소를 구분하기 위한 고유 키
+              -->
               <div
                 v-for="(message, index) in messages"
                 :key="index"
                 class="mb-3"
                 :class="getMessageAlignment(message)"
               >
-                <!-- 시스템 메시지 (JOIN, LEAVE, NOTICE) -->
+                <!-- 시스템 메시지 (JOIN, LEAVE, NOTICE 타입) -->
                 <div v-if="message.type !== 'CHAT'" class="text-center">
                   <small class="text-muted bg-white px-3 py-1 rounded">
                     {{ getSystemMessage(message) }}
@@ -53,28 +85,43 @@
                 </div>
 
                 <!-- 일반 채팅 메시지 -->
-                <div v-else :class="isMyMessage(message) ? 'text-end' : ''">
-                  <small v-if="!isMyMessage(message)" class="text-muted d-block mb-1">
-                    {{ message.senderName }}
-                  </small>
-                  <div
-                    class="d-inline-block p-2 px-3 rounded-3"
-                    :class="isMyMessage(message) ? 'bg-primary text-white' : 'bg-white'"
-                    style="max-width: 70%;"
-                  >
-                    {{ message.content }}
+                <div v-else class="d-flex" :class="isMyMessage(message) ? 'justify-content-end' : 'justify-content-start'">
+                  <div :class="isMyMessage(message) ? 'text-end' : 'text-start'" style="max-width: 70%;">
+                    <!-- 내 메시지가 아닐 때만 발신자 닉네임 표시 -->
+                    <small v-if="!isMyMessage(message)" class="text-muted d-block mb-1">
+                      {{ message.senderNickname || message.senderName || '익명' }}
+                    </small>
+                    <!--
+                      메시지 말풍선
+                      내 메시지: 파란 배경 + 흰 글씨 (오른쪽)
+                      상대 메시지: 흰 배경 (왼쪽)
+                    -->
+                    <div
+                      class="d-inline-block p-2 px-3 rounded-3"
+                      :class="isMyMessage(message) ? 'bg-primary text-white' : 'bg-white border'"
+                    >
+                      {{ message.content }}
+                    </div>
+                    <!-- 메시지 전송 시간 -->
+                    <small class="text-muted d-block mt-1">
+                      {{ formatTime(message.createdAt) }}
+                    </small>
                   </div>
-                  <small class="text-muted d-block mt-1">
-                    {{ formatTime(message.createdAt) }}
-                  </small>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 입력 영역 -->
+          <!-- ==================== 메시지 입력 영역 ==================== -->
           <div class="card-footer bg-white">
+            <!--
+              @submit.prevent: form 제출 시 sendMessage 실행 + 페이지 새로고침 방지
+            -->
             <form @submit.prevent="sendMessage" class="d-flex gap-2">
+              <!--
+                v-model: 입력값과 newMessage 변수 양방향 바인딩
+                :disabled: connected가 false면 입력 비활성화
+              -->
               <input
                 type="text"
                 class="form-control"
@@ -82,6 +129,10 @@
                 placeholder="메시지를 입력하세요..."
                 :disabled="!connected"
               />
+              <!--
+                :disabled: 연결 안 됐거나 메시지가 비어있으면 버튼 비활성화
+                newMessage.trim(): 공백만 있는 경우 방지
+              -->
               <button
                 type="submit"
                 class="btn btn-primary"
@@ -98,157 +149,273 @@
 </template>
 
 <script>
+// ==================== 라이브러리 import ====================
+// SockJS: WebSocket의 폴백(fallback) 라이브러리
+// 브라우저가 WebSocket을 지원 안 하면 HTTP long-polling 등으로 대체
 import SockJS from 'sockjs-client'
+
+// STOMP: Simple Text Oriented Messaging Protocol
+// WebSocket 위에서 동작하는 메시징 프로토콜 (구독/발행 패턴)
 import { Client } from '@stomp/stompjs'
-import { getRecentMessages } from '../api/chat'
-import { getMyProfile } from '../api/user'
+
+// API 함수들 import
+import { getRecentMessages } from '../api/chat'  // 최근 메시지 조회 API
+import { getMyProfile } from '../api/user'       // 내 프로필 조회 API
 
 export default {
   name: 'ChatView',
 
+  // ==================== 컴포넌트 상태 (data) ====================
+  // 반응형 데이터: 값이 변경되면 화면 자동 업데이트
   data() {
     return {
-      messages: [],
-      newMessage: '',
-      loading: true,
-      connected: false,
-      stompClient: null,
-      currentUser: null
+      messages: [],        // 채팅 메시지 배열
+      newMessage: '',      // 입력 중인 메시지 (v-model로 바인딩)
+      loading: true,       // 초기 로딩 상태
+      connected: false,    // WebSocket 연결 상태
+      stompClient: null,   // STOMP 클라이언트 인스턴스
+      currentUser: null    // 현재 로그인한 사용자 정보
     }
   },
 
+  // ==================== 계산된 속성 (computed) ====================
+  // 캐싱되어 의존하는 데이터가 변경될 때만 재계산
   computed: {
+    // URL에서 groupId 파라미터 추출
+    // 예: /chat/123 → groupId = "123"
     groupId() {
       return this.$route.params.groupId
     }
   },
 
+  // ==================== 라이프사이클 훅 ====================
+
+  // mounted: 컴포넌트가 DOM에 마운트된 직후 실행
   async mounted() {
+    // 1. 초기 데이터 로드 (이전 메시지, 사용자 정보)
     await this.loadInitialData()
+    // 2. WebSocket 연결
     this.connectWebSocket()
   },
 
+  // beforeUnmount: 컴포넌트가 DOM에서 제거되기 직전 실행
+  // 다른 페이지로 이동할 때 WebSocket 연결 정리
   beforeUnmount() {
     this.disconnectWebSocket()
   },
 
+  // ==================== 메서드 ====================
   methods: {
+    /**
+     * 초기 데이터 로드
+     * - 최근 채팅 메시지 조회
+     * - 현재 사용자 프로필 조회
+     */
     async loadInitialData() {
-      this.loading = true
+      this.loading = true  // 로딩 시작
       try {
+        // Promise.all: 두 API를 병렬로 동시 호출 (성능 향상)
         const [messagesRes, profileRes] = await Promise.all([
-          getRecentMessages(this.groupId),
-          getMyProfile()
+          getRecentMessages(this.groupId),  // GET /api/chat/{groupId}/recent
+          getMyProfile()                     // GET /api/users/me
         ])
-        this.messages = messagesRes.data.data || []
-        this.currentUser = profileRes.data.data
+
+        // 응답에서 데이터 추출하여 상태에 저장
+        // 서버 응답 구조: { success: true, data: 실제데이터 }
+        // API 응답이 { data: { success, data } } 형태이므로 .data.data로 접근
+
+        // 메시지 목록: 백엔드에서 최신순(DESC)으로 오므로 reverse해서 오래된 메시지가 위에 오도록
+        const rawMessages = messagesRes.data.data || []
+        this.messages = rawMessages.reverse()
+
+        // 사용자 정보 저장 (UserController는 ApiResponse 없이 직접 반환)
+        this.currentUser = profileRes.data
+
+        // 디버그용 로그 (문제 해결 후 삭제 가능)
+        console.log('=== 채팅 초기화 ===')
+        console.log('현재 사용자 정보:', this.currentUser)
+        console.log('현재 사용자 ID:', this.currentUser?.id)
+        console.log('초기 메시지 수:', this.messages.length)
+
+        // $nextTick: DOM 업데이트가 완료된 후 실행
+        // 메시지 로드 후 스크롤을 맨 아래로 이동
         this.$nextTick(() => this.scrollToBottom())
       } catch (error) {
         console.error('초기 데이터 로드 실패:', error)
       } finally {
-        this.loading = false
+        this.loading = false  // 로딩 종료 (성공/실패 무관)
       }
     },
 
+    /**
+     * WebSocket 연결 설정
+     * STOMP over SockJS 방식 사용
+     */
     connectWebSocket() {
+      // 1. SockJS 소켓 생성 (백엔드 WebSocket 엔드포인트)
       const socket = new SockJS('http://localhost:8080/ws')
 
+      // 2. STOMP 클라이언트 생성 및 설정
       this.stompClient = new Client({
+        // WebSocket 팩토리: SockJS 소켓 반환
         webSocketFactory: () => socket,
+
+        // 디버그 로그 (콘솔에 STOMP 메시지 출력)
         debug: (str) => console.log('STOMP:', str),
+
+        // 연결 끊기면 5초 후 자동 재연결 시도
         reconnectDelay: 5000,
+
+        // 하트비트: 연결 상태 확인용 ping/pong (4초 간격)
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000
       })
 
+      // 3. 연결 성공 시 콜백
       this.stompClient.onConnect = () => {
         console.log('WebSocket 연결됨')
-        this.connected = true
+        this.connected = true  // 연결 상태 업데이트
 
-        // 채팅방 구독
+        // 채팅방 토픽 구독
+        // /topic/chat/{groupId}로 오는 메시지를 수신
         this.stompClient.subscribe(`/topic/chat/${this.groupId}`, (message) => {
+          // 수신된 메시지를 JSON 파싱
           const chatMessage = JSON.parse(message.body)
+
+          // 디버그용 로그: 수신된 메시지와 내 메시지 여부 확인
+          console.log('=== 메시지 수신 ===')
+          console.log('수신된 메시지:', chatMessage)
+          console.log('메시지 senderId:', chatMessage.senderId)
+          console.log('내 userId:', this.currentUser?.id)
+          console.log('내 메시지 여부:', chatMessage.senderId === this.currentUser?.id)
+
+          // 메시지 배열에 추가 (화면 자동 업데이트)
           this.messages.push(chatMessage)
+          // 스크롤 맨 아래로
           this.$nextTick(() => this.scrollToBottom())
         })
 
-        // 입장 메시지 전송
+        // 입장 메시지 전송 (선택사항)
+        // /app/chat/{groupId}/send로 메시지 발행
+        // 백엔드의 @MessageMapping("/chat/{groupId}/send")가 처리
         this.stompClient.publish({
           destination: `/app/chat/${this.groupId}/send`,
           body: JSON.stringify({
             groupId: this.groupId,
-            content: `${this.currentUser?.name || '사용자'}님이 입장했습니다.`,
-            type: 'JOIN'
+            content: `${this.currentUser?.nickname || this.currentUser?.name || '사용자'}님이 입장했습니다.`,
+            type: 'JOIN'  // 메시지 타입: 입장
           })
         })
       }
 
+      // 4. 연결 끊김 시 콜백
       this.stompClient.onDisconnect = () => {
         console.log('WebSocket 연결 끊김')
         this.connected = false
       }
 
+      // 5. STOMP 에러 발생 시 콜백
       this.stompClient.onStompError = (frame) => {
         console.error('STOMP 에러:', frame)
         this.connected = false
       }
 
+      // 6. 연결 시작!
       this.stompClient.activate()
     },
 
+    /**
+     * WebSocket 연결 종료
+     * 페이지 이탈 시 호출됨
+     */
     disconnectWebSocket() {
+      // 클라이언트가 있고 연결된 상태일 때만 실행
       if (this.stompClient && this.connected) {
         // 퇴장 메시지 전송
         this.stompClient.publish({
           destination: `/app/chat/${this.groupId}/send`,
           body: JSON.stringify({
             groupId: this.groupId,
-            content: `${this.currentUser?.name || '사용자'}님이 퇴장했습니다.`,
-            type: 'LEAVE'
+            content: `${this.currentUser?.nickname || this.currentUser?.name || '사용자'}님이 퇴장했습니다.`,
+            type: 'LEAVE'  // 메시지 타입: 퇴장
           })
         })
 
+        // STOMP 클라이언트 비활성화 (연결 종료)
         this.stompClient.deactivate()
       }
     },
 
+    /**
+     * 메시지 전송
+     * form 제출 시 호출됨
+     */
     sendMessage() {
+      // 빈 메시지이거나 연결 안 됐으면 무시
       if (!this.newMessage.trim() || !this.connected) return
 
+      // STOMP로 메시지 발행
+      // 백엔드가 받아서 /topic/chat/{groupId}로 브로드캐스트
       this.stompClient.publish({
         destination: `/app/chat/${this.groupId}/send`,
         body: JSON.stringify({
           groupId: this.groupId,
-          content: this.newMessage.trim(),
-          type: 'CHAT'
+          content: this.newMessage.trim(),  // 앞뒤 공백 제거
+          type: 'CHAT'  // 메시지 타입: 일반 채팅
         })
       })
 
+      // 입력 필드 초기화
       this.newMessage = ''
     },
 
+    /**
+     * 내가 보낸 메시지인지 확인
+     * @param {Object} message - 메시지 객체
+     * @returns {boolean} 내 메시지면 true
+     */
     isMyMessage(message) {
       return message.senderId === this.currentUser?.id
     },
 
+    /**
+     * 메시지 정렬 클래스 반환 (현재 미사용)
+     * 필요시 확장 가능
+     */
     getMessageAlignment(message) {
       if (message.type !== 'CHAT') return ''
       return this.isMyMessage(message) ? '' : ''
     },
 
+    /**
+     * 시스템 메시지 내용 반환
+     * @param {Object} message - 메시지 객체
+     * @returns {string} 표시할 내용
+     */
     getSystemMessage(message) {
       return message.content
     },
 
+    /**
+     * 타임스탬프를 시:분 형식으로 변환
+     * @param {string} timestamp - ISO 형식 날짜 문자열
+     * @returns {string} "오전 10:30" 형식
+     */
     formatTime(timestamp) {
       if (!timestamp) return ''
       const date = new Date(timestamp)
       return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
     },
 
+    /**
+     * 메시지 컨테이너를 맨 아래로 스크롤
+     * 새 메시지가 오면 최신 메시지가 보이도록
+     */
     scrollToBottom() {
+      // $refs: template의 ref="xxx"로 지정한 DOM 요소 접근
       const container = this.$refs.messageContainer
       if (container) {
+        // scrollTop을 scrollHeight로 설정하면 맨 아래로 이동
         container.scrollTop = container.scrollHeight
       }
     }
@@ -257,7 +424,9 @@ export default {
 </script>
 
 <style scoped>
+/* scoped: 이 컴포넌트에만 적용되는 스타일 */
 .card {
+  /* 카드 최대 높이: 화면 높이 - 여백 */
   max-height: calc(100vh - 2rem);
 }
 </style>

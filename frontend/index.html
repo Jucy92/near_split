@@ -4,7 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>NearSplit</title>
+
+    <!--
+      sockjs-client 라이브러리가 Node.js 환경의 'global' 객체를 사용하는데,
+      브라우저에는 'global'이 없어서 에러 발생.
+      아래 스크립트로 브라우저의 'window' 객체를 'global'로 매핑해서 해결.
+    -->
+    <script>
+      // Node.js의 global 객체를 브라우저의 window로 폴리필
+      // sockjs-client가 global.crypto 등을 참조할 때 window.crypto를 사용하게 됨
+      var global = window;
+    </script>
   </head>
   <body>
     <div id="app"></div>

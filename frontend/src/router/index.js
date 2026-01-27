@@ -7,8 +7,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',              // URL: http://localhost:5173/
-    name: 'Home',           // 라우트 이름 (선택)
+    //name: 'Home',           // 라우트 이름 (선택)
     redirect: '/groups'     // → /groups로 자동 리다이렉트 (홈화면 역할)
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('../views/HomeView.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/login',         // URL: http://localhost:5173/login
@@ -40,6 +46,30 @@ const routes = [
     name: 'Chat',
     component: () => import('../views/ChatView.vue'),
     meta: { requiresAuth: true }  // 로그인 필요
+  },
+  // ===========================
+  // 프로필 페이지
+  // ===========================
+  {
+    path: '/profile',       // URL: http://localhost:5173/profile
+    name: 'Profile',
+    component: () => import('../views/ProfileView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
+  // ===========================
+  // 상품 관련 페이지
+  // ===========================
+  {
+    path: '/products',      // URL: http://localhost:5173/products
+    name: 'ProductList',
+    component: () => import('../views/ProductListView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
+  {
+    path: '/products/new',  // URL: http://localhost:5173/products/new
+    name: 'ProductCreate',
+    component: () => import('../views/ProductCreateView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
   }
 ]
 
@@ -66,7 +96,7 @@ router.beforeEach((to, from, next) => {
   //   - next(false): 이동 취소
 
   // 쿠키에서 accessToken 확인 (로그인 여부 체크)
-  const isAuthenticated = document.cookie.includes('accessToken')
+  const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true' //document.cookie.includes('accessToken') // 쿠키 ReadOnly 떄문에 사용 x
 
   // 1. 로그인이 필요한 페이지인데 로그인 안 되어 있으면?
   if (to.meta.requiresAuth && !isAuthenticated) {

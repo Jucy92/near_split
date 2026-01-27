@@ -51,14 +51,16 @@ export const cancelJoin = (groupId) => {
 
 // 참여자 승인
 // POST /api/split/{groupId}/approve
-export const approveParticipant = (groupId, participantId) => {
-  return apiClient.post(`/split/${groupId}/approve`, { participantId })
+// 백엔드 ParticipantActionRequest는 participantUserId 필드를 기대함
+export const approveParticipant = (groupId, participantUserId) => {
+  return apiClient.post(`/split/${groupId}/approve`, { participantUserId })
 }
 
 // 참여자 거절
 // POST /api/split/{groupId}/reject
-export const rejectParticipant = (groupId, participantId) => {
-  return apiClient.post(`/split/${groupId}/reject`, { participantId })
+// 백엔드 ParticipantActionRequest는 participantUserId 필드를 기대함
+export const rejectParticipant = (groupId, participantUserId) => {
+  return apiClient.post(`/split/${groupId}/reject`, { participantUserId })
 }
 
 // 참여자 수 조회

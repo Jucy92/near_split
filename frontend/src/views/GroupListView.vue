@@ -51,8 +51,9 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <h5 class="card-title mb-0">{{ group.title }}</h5>
-                  <span class="badge" :class="getStatusBadgeClass(group.status)">
-                    {{ getStatusText(group.status) }}
+                  <!-- 백엔드 SplitGroupResponse는 groupState 필드 사용 -->
+                  <span class="badge" :class="getStatusBadgeClass(group.groupState)">
+                    {{ getStatusText(group.groupState) }}
                   </span>
                 </div>
                 <p class="card-text text-muted small mb-2">
@@ -98,26 +99,34 @@
           참여 중인 그룹이 없습니다.
         </div>
         <div v-else class="list-group">
+          <!--
+            내 그룹 목록: SplitGroupSummaryResponse 사용
+            - groupId: 그룹 ID (id가 아님!)
+            - status: 상태 (groupState가 아님!)
+            - pickupLocation: 없음 (SummaryResponse에 없음)
+          -->
           <div
             v-for="group in myGroups"
-            :key="group.id"
+            :key="group.groupId"
             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-            @click="goToDetail(group.id)"
+            @click="goToDetail(group.groupId)"
             style="cursor: pointer;"
           >
             <div>
               <h6 class="mb-1">{{ group.title }}</h6>
               <small class="text-muted">
+                <!-- SplitGroupSummaryResponse는 status 필드 사용 -->
                 <span class="badge" :class="getStatusBadgeClass(group.status)">
                   {{ getStatusText(group.status) }}
                 </span>
-                <span class="ms-2">{{ group.pickupLocation || '위치 미정' }}</span>
+                <!-- SummaryResponse에 pickupLocation 없음 - 제거 -->
+                <span v-if="group.isHost" class="ms-2 badge bg-warning text-dark">방장</span>
               </small>
             </div>
             <div class="text-end">
               <span class="badge bg-primary">{{ group.currentParticipants }}/{{ group.maxParticipants }}</span>
               <router-link
-                :to="`/chat/${group.id}`"
+                :to="`/chat/${group.groupId}`"
                 class="btn btn-sm btn-outline-secondary ms-2"
                 @click.stop
               >

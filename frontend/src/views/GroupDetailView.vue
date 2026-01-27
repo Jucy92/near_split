@@ -26,8 +26,8 @@
             <!-- 제목 + 상태 -->
             <div class="d-flex justify-content-between align-items-start mb-3">
               <h4 class="card-title mb-0">{{ group.title }}</h4>
-              <span class="badge fs-6" :class="getStatusBadgeClass(group.status)">
-                {{ getStatusText(group.status) }}
+              <span class="badge fs-6" :class="getStatusBadgeClass(group.groupState)">
+                {{ getStatusText(group.groupState) }}
               </span>
             </div>
 
@@ -44,7 +44,8 @@
               <div class="col-6">
                 <div class="text-muted small">참여 현황</div>
                 <div class="fs-5">
-                  <span class="fw-bold">{{ group.currentParticipants }}</span>
+                  <!-- approvedCount: 호스트(1) + 승인된 참여자 수 -->
+                  <span class="fw-bold">{{ approvedCount }}</span>
                   <span class="text-muted"> / {{ group.maxParticipants }}명</span>
                 </div>
               </div>
@@ -70,7 +71,7 @@
               <!-- 호스트가 아닐 때: 참여/취소 버튼 -->
               <template v-if="!isHost">
                 <button
-                  v-if="!isParticipant && group.status === 'RECRUITING'"
+                  v-if="!isParticipant && group.groupState === 'RECRUITING'"
                   class="btn btn-primary"
                   @click="handleJoin"
                   :disabled="actionLoading"
@@ -99,13 +100,15 @@
                 <button class="btn btn-outline-danger" @click="handleDelete" :disabled="actionLoading">삭제</button>
               </template>
 
-              <!-- 채팅 버튼 (참여자만) -->
+              <!-- 채팅 버튼 (호스트 또는 승인된 참여자만) -->
+              <!-- isHost: 방장인 경우 채팅방 입장 가능 -->
+              <!-- myParticipantStatus === 'APPROVED': 참여 승인된 사용자만 채팅방 입장 가능 -->
               <router-link
-                v-if="isParticipant || isHost"
+                v-if="isHost || myParticipantStatus === 'APPROVED'"
                 :to="`/chat/${group.id}`"
                 class="btn btn-outline-secondary"
               >
-                채팅방
+                💬 채팅방
               </router-link>
             </div>
           </div>
@@ -125,28 +128,32 @@
             <ul v-else class="list-group list-group-flush">
               <li
                 v-for="participant in participants"
-                :key="participant.id"
+                :key="participant.userId"
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
                 <div>
-                  <div class="fw-bold">{{ participant.userName || '참여자' }}</div>
-                  <small class="text-muted">{{ participant.userEmail }}</small>
+                  <!-- 참여자 닉네임 표시 (백엔드에서 userNickname 제공 시) -->
+                  <div class="fw-bold">{{ participant.userNickname || `사용자 #${participant.userId}` }}</div>
+                  <small class="text-muted">
+                    {{ formatTime(participant.joinedAt) }} 신청
+                  </small>
                 </div>
                 <div>
                   <!-- 상태에 따른 버튼 -->
                   <span v-if="participant.status === 'APPROVED'" class="badge bg-success">승인됨</span>
                   <span v-else-if="participant.status === 'REJECTED'" class="badge bg-danger">거절됨</span>
                   <div v-else class="btn-group btn-group-sm">
+                    <!-- userId를 전달하여 승인/거절 처리 -->
                     <button
                       class="btn btn-outline-success"
-                      @click="handleApprove(participant.id)"
+                      @click="handleApprove(participant.userId)"
                       :disabled="actionLoading"
                     >
                       승인
                     </button>
                     <button
                       class="btn btn-outline-danger"
-                      @click="handleReject(participant.id)"
+                      @click="handleReject(participant.userId)"
                       :disabled="actionLoading"
                     >
                       거절
@@ -229,7 +236,8 @@ export default {
       return this.$route.params.id
     },
     isHost() {
-      return this.group?.hostId === this.currentUser?.id
+      // 백엔드 SplitGroupResponse의 hostUserId 필드 사용
+      return this.group?.hostUserId === this.currentUser?.id
     },
     isParticipant() {
       return this.participants.some(p => p.userId === this.currentUser?.id)
@@ -238,15 +246,23 @@ export default {
       const myParticipation = this.participants.find(p => p.userId === this.currentUser?.id)
       return myParticipation?.status || null
     },
+    // 1인당 금액 계산 (방장 포함 N빵이므로 maxParticipants + 1)
     pricePerPerson() {
       if (this.group?.totalPrice && this.group?.maxParticipants) {
-        return Math.ceil(this.group.totalPrice / this.group.maxParticipants).toLocaleString()
+        // 방장도 금액을 나누므로 총 인원 = 참여자 + 방장(1명)
+        return Math.ceil(this.group.totalPrice / (this.group.maxParticipants + 1)).toLocaleString()
       }
       return '0'
     },
+    // 승인된 참여자 수 (participants 배열에서 APPROVED 상태만 카운트)
+    // 백엔드에서 호스트도 participants에 APPROVED로 포함되어 있음
+    approvedCount() {
+      return this.participants.filter(p => p.status === 'APPROVED').length
+    },
     progressPercent() {
       if (this.group?.maxParticipants) {
-        return Math.round((this.group.currentParticipants / this.group.maxParticipants) * 100)
+        // currentParticipants 대신 approvedCount 사용
+        return Math.round((this.approvedCount / this.group.maxParticipants) * 100)
       }
       return 0
     },
@@ -271,7 +287,8 @@ export default {
         ])
         this.group = groupRes.data.data || groupRes.data
         this.participants = this.group.participants || []
-        this.currentUser = profileRes.data.data
+        // UserController는 ApiResponse로 감싸지 않고 UserResponse 직접 반환
+        this.currentUser = profileRes.data
       } catch (error) {
         console.error('데이터 로드 실패:', error)
         this.errorMessage = '그룹 정보를 불러오는데 실패했습니다.'
@@ -309,10 +326,11 @@ export default {
       }
     },
 
-    async handleApprove(participantId) {
+    // 참여자 승인 (userId를 백엔드에 전달)
+    async handleApprove(userId) {
       this.actionLoading = true
       try {
-        await approveParticipant(this.groupId, participantId)
+        await approveParticipant(this.groupId, userId)
         this.successMessage = '참여자를 승인했습니다.'
         await this.loadData()
       } catch (error) {
@@ -322,11 +340,12 @@ export default {
       }
     },
 
-    async handleReject(participantId) {
+    // 참여자 거절 (userId를 백엔드에 전달)
+    async handleReject(userId) {
       if (!confirm('정말 거절하시겠습니까?')) return
       this.actionLoading = true
       try {
-        await rejectParticipant(this.groupId, participantId)
+        await rejectParticipant(this.groupId, userId)
         this.successMessage = '참여자를 거절했습니다.'
         await this.loadData()
       } catch (error) {
@@ -375,6 +394,18 @@ export default {
 
     formatPrice(price) {
       return price?.toLocaleString() || '0'
+    },
+
+    // 날짜/시간 포맷 (참여 신청 시간 표시용)
+    formatTime(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toLocaleDateString('ko-KR', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
   },
 
