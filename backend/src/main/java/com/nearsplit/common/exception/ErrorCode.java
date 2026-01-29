@@ -49,7 +49,10 @@ public enum ErrorCode {
     INVALID_DEADLINE(HttpStatus.BAD_REQUEST, "G010", "마감일은 내일 이후로 설정해야 합니다"),
     
     // 상품 에러
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 상품번호 입니다");
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 상품번호 입니다"),
+
+    // 알림 에러
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "존재하지 않는 알림번호 입니다");
 
     private final HttpStatus status;
     private final String code;

@@ -2,6 +2,9 @@ package com.nearsplit.domain.split_group.service;
 
 import com.nearsplit.common.exception.BusinessException;
 import com.nearsplit.common.exception.ErrorCode;
+import com.nearsplit.domain.notification.entity.NotificationType;
+import com.nearsplit.domain.notification.entity.ReferenceType;
+import com.nearsplit.domain.notification.service.NotificationService;
 import com.nearsplit.domain.split_group.dto.*;
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.ParticipantStatus;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Ref;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -30,6 +34,7 @@ public class SplitGroupService {
     private final SplitGroupRepository splitGroupRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public SplitGroup createSplitGroup(Long userId, SplitGroupRequest request) {
@@ -68,9 +73,11 @@ public class SplitGroupService {
         return saved;
     }
 
+    // 모집 중인 전체 그룹 조회
     public Page<SplitGroup> getAllRecruitingGroups(PageRequest pageRequest) {
         return splitGroupRepository.findByStatus(SplitGroupStatus.RECRUITING, pageRequest);
     }
+
 
     public List<Participant> getMySplitGroups(Long userId) {
         if (!userRepository.existsById(userId)) {
@@ -135,6 +142,7 @@ public class SplitGroupService {
             }
             target.setClosedAt(request.getClosedAt());
         }
+        // 내용 수정하면 참여자한테 내용 변경 됐다고 알림 보내기?
 
         return target;
     }
@@ -163,7 +171,7 @@ public class SplitGroupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND, "존재하지 않는 그룹입니다."));
 
         if (participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
-            throw new IllegalArgumentException("이미 참여 신청한 그룹입니다."); // 다 IllegalArgumentException으로 처리하면 프론트에서 C001 오류 코드로 전부 응답 받음..
+            throw new IllegalArgumentException("이미 참여 신청한 그룹입니다.");
         }
 
         if (!SplitGroupStatus.RECRUITING.equals(findGroup.getStatus())) {
@@ -180,6 +188,10 @@ public class SplitGroupService {
                 .userId(userId)
                 .build();
 
+        notificationService.createNotification(findGroup.getHostUserId(), NotificationType.JOIN_REQUEST,
+                "그룹 참여 요청", "그룹 참여 요청이 왔습니다.", findGroup.getId(), ReferenceType.SPLIT_GROUP);       // 리턴을 사용할 필요가 없구나..?
+        log.info("findGroup.getClass().getName()={}", findGroup.getClass().getName());
+
         return participantRepository.save(joiner);
     }
 
@@ -193,6 +205,9 @@ public class SplitGroupService {
         }
 
         participantRepository.delete(participant);
+
+        // 알림 삭제 요청
+        notificationService.deletedNotification(participant.getSplitGroup().getHostUserId(), groupId, ReferenceType.SPLIT_GROUP, NotificationType.JOIN_REQUEST);
 
         return participant;
     }
@@ -216,10 +231,22 @@ public class SplitGroupService {
         participant.setStatus(ParticipantStatus.APPROVED);
         participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants() + 1), 2, RoundingMode.HALF_DOWN));
 
+        notificationService.createNotification(participant.getUserId(), NotificationType.APPROVED,
+                "그룹 참여 승인", "참여 신청이 승인 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
+
+
+
+
         findGroup.setCurrentParticipants(findGroup.getCurrentParticipants() + 1);
+
+
         // 현재 인원 = 총 모집 인원 => 상태 풀로 변경
         if (findGroup.getMaxParticipants() == findGroup.getCurrentParticipants()) {
             findGroup.setStatus(SplitGroupStatus.FULL);
+            for (Participant findParticipant : findGroup.getParticipants()) {
+                notificationService.createNotification(findParticipant.getUserId(), NotificationType.GROUP_FULL,
+                        "모집 완료", "모집이 완료 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
+            }
         }
 
         return participant;
@@ -241,8 +268,13 @@ public class SplitGroupService {
         if (ParticipantStatus.REJECTED.equals(participant.getStatus())) {
             throw new IllegalArgumentException("이미 거절된 참여자입니다.");
         }
+        participantRepository.delete(participant);  // 삭제하면 위에 체크 로직도 불필요
 
-        participant.setStatus(ParticipantStatus.REJECTED);
+        // participant.setStatus(ParticipantStatus.REJECTED); // 거절한 내역 남겨두려고 했는데, 재요청 시 로직 복잡해져서 일단 삭제로 변경
+
+
+        notificationService.createNotification(participant.getUserId(), NotificationType.REJECTED,
+                "그룹 참여 거절", "참여 신청이 거절 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
 
         return participant;
     }
