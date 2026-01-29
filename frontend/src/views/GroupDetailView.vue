@@ -86,11 +86,26 @@
                 >
                   참여 취소
                 </button>
+                <!-- 승인된 경우: 배지만 표시 -->
                 <span v-if="myParticipantStatus === 'APPROVED'" class="badge bg-success fs-6 align-self-center">
                   참여 승인됨
                 </span>
-                <span v-if="myParticipantStatus === 'REJECTED'" class="badge bg-danger fs-6 align-self-center">
-                  참여 거절됨
+                <!--
+                  거절된 경우: "재요청" 버튼 표시
+                  모집 중인 상태에서만 재요청 가능
+                  클릭 시 handleReJoin() 호출 → 백엔드에서 기존 REJECTED 기록 삭제 후 재신청 처리
+                -->
+                <button
+                  v-if="myParticipantStatus === 'REJECTED' && group.groupState === 'RECRUITING'"
+                  class="btn btn-outline-primary"
+                  @click="handleReJoin"
+                  :disabled="actionLoading"
+                >
+                  재요청
+                </button>
+                <!-- 모집 마감된 경우 거절 배지만 표시 -->
+                <span v-if="myParticipantStatus === 'REJECTED' && group.groupState !== 'RECRUITING'" class="badge bg-secondary fs-6 align-self-center">
+                  모집 마감
                 </span>
               </template>
 
@@ -326,6 +341,31 @@ export default {
       }
     },
 
+    /**
+     * 거절된 참여 재요청
+     * 거절(REJECTED) 상태에서 다시 참여 신청할 때 사용
+     * 백엔드에서 기존 REJECTED 기록을 삭제 후 새로 PENDING 상태로 생성해야 함
+     * 현재는 joinGroup API를 호출하지만, 백엔드에서 REJECTED 처리 로직이 필요함
+     */
+    async handleReJoin() {
+      if (!confirm('다시 참여 신청하시겠습니까?')) return
+      this.actionLoading = true
+      this.errorMessage = ''
+      try {
+        // 백엔드에서 기존 REJECTED 기록을 삭제하고 새로 생성해야 함
+        // 또는 별도의 reJoin API가 필요할 수 있음
+        await joinGroup(this.groupId)
+        this.successMessage = '참여 재신청이 완료되었습니다.'
+        await this.loadData()
+      } catch (error) {
+        // 이미 참여 신청 기록이 있으면 에러 발생 가능
+        // 백엔드에서 REJECTED 상태의 재신청 로직 추가 필요
+        this.errorMessage = error.response?.data?.message || '재신청에 실패했습니다. 잠시 후 다시 시도해주세요.'
+      } finally {
+        this.actionLoading = false
+      }
+    },
+
     // 참여자 승인 (userId를 백엔드에 전달)
     async handleApprove(userId) {
       this.actionLoading = true
@@ -410,6 +450,34 @@ export default {
   },
 
   watch: {
+    /**
+     * URL 변경 시 데이터 다시 로드
+     *
+     * 케이스 1: 다른 그룹으로 이동 (/groups/5 → /groups/3)
+     *   - params.id가 변경됨 → 새 그룹 데이터 로드
+     *
+     * 케이스 2: 같은 그룹 페이지에서 알림 클릭
+     *   - params.id는 동일하지만 query.t(timestamp)가 변경됨
+     *   - 참여자 목록 등 최신 데이터로 새로고침 필요
+     *
+     * Vue Router는 같은 컴포넌트면 재사용하므로 mounted()가 다시 호출되지 않음
+     * 따라서 $route 전체를 watch해서 변경 시 수동으로 데이터 로드
+     */
+    '$route': {
+      handler(newRoute, oldRoute) {
+        // 이 컴포넌트가 표시되는 경로인지 확인 (그룹 상세 페이지)
+        if (newRoute.path.startsWith('/groups/') && newRoute.params.id) {
+          // 다른 그룹으로 이동하거나, 같은 그룹이지만 query가 변경된 경우
+          const isIdChanged = newRoute.params.id !== oldRoute?.params?.id
+          const isQueryChanged = newRoute.query?.t !== oldRoute?.query?.t
+
+          if (isIdChanged || isQueryChanged) {
+            console.log('라우트 변경 감지 - 데이터 새로고침')
+            this.loadData()
+          }
+        }
+      }
+    },
     showEditModal(val) {
       if (val && this.group) {
         this.editForm = {

@@ -71,44 +71,62 @@
                 v-for: messages 배열을 순회하며 각 메시지 렌더링
                 :key: Vue가 각 요소를 구분하기 위한 고유 키
               -->
-              <div
-                v-for="(message, index) in messages"
-                :key="index"
-                class="mb-3"
-                :class="getMessageAlignment(message)"
-              >
-                <!-- 시스템 메시지 (JOIN, LEAVE, NOTICE 타입) -->
-                <div v-if="message.type !== 'CHAT'" class="text-center">
-                  <small class="text-muted bg-white px-3 py-1 rounded">
-                    {{ getSystemMessage(message) }}
-                  </small>
+              <template v-for="(message, index) in messages" :key="index">
+                <!--
+                  날짜 구분선: 이전 메시지와 날짜가 다르면 표시
+                  첫 메시지이거나 날짜가 바뀌었을 때 "2026-01-28" 형식으로 표시
+                -->
+                <div
+                  v-if="shouldShowDateSeparator(index)"
+                  class="date-separator text-center my-3"
+                >
+                  <span class="bg-light text-muted px-3 py-1 rounded-pill small">
+                    {{ formatDate(message.createdAt) }}
+                  </span>
                 </div>
 
-                <!-- 일반 채팅 메시지 -->
-                <div v-else class="d-flex" :class="isMyMessage(message) ? 'justify-content-end' : 'justify-content-start'">
-                  <div :class="isMyMessage(message) ? 'text-end' : 'text-start'" style="max-width: 70%;">
-                    <!-- 내 메시지가 아닐 때만 발신자 닉네임 표시 -->
-                    <small v-if="!isMyMessage(message)" class="text-muted d-block mb-1">
-                      {{ message.senderNickname || message.senderName || '익명' }}
-                    </small>
-                    <!--
-                      메시지 말풍선
-                      내 메시지: 파란 배경 + 흰 글씨 (오른쪽)
-                      상대 메시지: 흰 배경 (왼쪽)
-                    -->
-                    <div
-                      class="d-inline-block p-2 px-3 rounded-3"
-                      :class="isMyMessage(message) ? 'bg-primary text-white' : 'bg-white border'"
-                    >
-                      {{ message.content }}
-                    </div>
-                    <!-- 메시지 전송 시간 -->
-                    <small class="text-muted d-block mt-1">
-                      {{ formatTime(message.createdAt) }}
+                <div class="mb-3" :class="getMessageAlignment(message)">
+                  <!--
+                    시스템 메시지 (NOTICE, SYSTEM 타입)
+                    JOIN, LEAVE 타입은 제외 (입장/퇴장 메시지 표시 안 함)
+                  -->
+                  <div v-if="isSystemMessage(message)" class="text-center">
+                    <small class="text-muted bg-white px-3 py-1 rounded">
+                      {{ getSystemMessage(message) }}
                     </small>
                   </div>
+
+                  <!-- 일반 채팅 메시지 -->
+                  <div
+                    v-else-if="message.type === 'CHAT'"
+                    class="d-flex"
+                    :class="isMyMessage(message) ? 'justify-content-end' : 'justify-content-start'"
+                  >
+                    <div :class="isMyMessage(message) ? 'text-end' : 'text-start'" style="max-width: 70%;">
+                      <!-- 내 메시지가 아닐 때만 발신자 닉네임 표시 -->
+                      <small v-if="!isMyMessage(message)" class="text-muted d-block mb-1">
+                        {{ message.senderNickname || message.senderName || '익명' }}
+                      </small>
+                      <!--
+                        메시지 말풍선
+                        내 메시지: 파란 배경 + 흰 글씨 (오른쪽)
+                        상대 메시지: 흰 배경 (왼쪽)
+                      -->
+                      <div
+                        class="d-inline-block p-2 px-3 rounded-3"
+                        :class="isMyMessage(message) ? 'bg-primary text-white' : 'bg-white border'"
+                      >
+                        {{ message.content }}
+                      </div>
+                      <!-- 메시지 전송 시간 -->
+                      <small class="text-muted d-block mt-1">
+                        {{ formatTime(message.createdAt) }}
+                      </small>
+                    </div>
+                  </div>
+                  <!-- JOIN, LEAVE 타입은 아무것도 표시하지 않음 (숨김) -->
                 </div>
-              </div>
+              </template>
             </div>
           </div>
 
@@ -295,17 +313,8 @@ export default {
           this.$nextTick(() => this.scrollToBottom())
         })
 
-        // 입장 메시지 전송 (선택사항)
-        // /app/chat/{groupId}/send로 메시지 발행
-        // 백엔드의 @MessageMapping("/chat/{groupId}/send")가 처리
-        this.stompClient.publish({
-          destination: `/app/chat/${this.groupId}/send`,
-          body: JSON.stringify({
-            groupId: this.groupId,
-            content: `${this.currentUser?.nickname || this.currentUser?.name || '사용자'}님이 입장했습니다.`,
-            type: 'JOIN'  // 메시지 타입: 입장
-          })
-        })
+        // 입장 메시지는 전송하지 않음
+        // 최초 그룹 참여 시에만 백엔드에서 시스템 메시지 저장
       }
 
       // 4. 연결 끊김 시 콜백
@@ -331,15 +340,8 @@ export default {
     disconnectWebSocket() {
       // 클라이언트가 있고 연결된 상태일 때만 실행
       if (this.stompClient && this.connected) {
-        // 퇴장 메시지 전송
-        this.stompClient.publish({
-          destination: `/app/chat/${this.groupId}/send`,
-          body: JSON.stringify({
-            groupId: this.groupId,
-            content: `${this.currentUser?.nickname || this.currentUser?.name || '사용자'}님이 퇴장했습니다.`,
-            type: 'LEAVE'  // 메시지 타입: 퇴장
-          })
-        })
+        // 퇴장 메시지는 전송하지 않음
+        // 단순히 채팅방을 나가는 것은 알릴 필요 없음
 
         // STOMP 클라이언트 비활성화 (연결 종료)
         this.stompClient.deactivate()
@@ -388,12 +390,99 @@ export default {
     },
 
     /**
+     * 시스템 메시지 여부 확인
+     * JOIN, LEAVE 타입은 시스템 메시지로 표시하지 않음 (숨김)
+     * NOTICE, SYSTEM, JOINED 등만 표시
+     * @param {Object} message - 메시지 객체
+     * @returns {boolean} 시스템 메시지로 표시할지 여부
+     */
+    isSystemMessage(message) {
+      // JOIN, LEAVE는 표시하지 않음
+      const hiddenTypes = ['JOIN', 'LEAVE']
+      // CHAT이 아니고, 숨김 타입도 아닌 경우에만 시스템 메시지로 표시
+      return message.type !== 'CHAT' && !hiddenTypes.includes(message.type)
+    },
+
+    /**
      * 시스템 메시지 내용 반환
      * @param {Object} message - 메시지 객체
      * @returns {string} 표시할 내용
      */
     getSystemMessage(message) {
       return message.content
+    },
+
+    /**
+     * 메시지가 화면에 표시되는지 확인
+     * JOIN, LEAVE 타입은 표시하지 않음
+     * @param {Object} message - 메시지 객체
+     * @returns {boolean} 표시 여부
+     */
+    isVisibleMessage(message) {
+      // CHAT 타입이거나 시스템 메시지(NOTICE, SYSTEM 등)만 표시
+      // JOIN, LEAVE는 표시하지 않음
+      const hiddenTypes = ['JOIN', 'LEAVE']
+      return !hiddenTypes.includes(message.type)
+    },
+
+    /**
+     * 날짜 구분선 표시 여부 확인
+     * 표시되는 메시지 중 첫 메시지이거나 이전 표시 메시지와 날짜가 다르면 true
+     * @param {number} index - 메시지 인덱스
+     * @returns {boolean} 날짜 구분선 표시 여부
+     */
+    shouldShowDateSeparator(index) {
+      const currentMessage = this.messages[index]
+
+      // 현재 메시지가 표시되지 않는 타입이면 날짜 구분선도 표시하지 않음
+      if (!this.isVisibleMessage(currentMessage)) return false
+
+      // 메시지에 createdAt이 없으면 표시하지 않음
+      if (!currentMessage?.createdAt) return false
+
+      // 이전에 표시된 메시지 찾기 (JOIN, LEAVE 제외)
+      let prevVisibleMessage = null
+      for (let i = index - 1; i >= 0; i--) {
+        if (this.isVisibleMessage(this.messages[i])) {
+          prevVisibleMessage = this.messages[i]
+          break
+        }
+      }
+
+      // 이전에 표시된 메시지가 없으면 첫 번째 표시 메시지 → 날짜 구분선 표시
+      if (!prevVisibleMessage) return true
+
+      // 이전 표시 메시지와 날짜 비교
+      const currentDate = this.getDateOnly(currentMessage.createdAt)
+      const prevDate = this.getDateOnly(prevVisibleMessage.createdAt)
+
+      return currentDate !== prevDate
+    },
+
+    /**
+     * 타임스탬프에서 날짜만 추출 (비교용)
+     * @param {string} timestamp - ISO 형식 날짜 문자열
+     * @returns {string} "2026-01-28" 형식
+     */
+    getDateOnly(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toISOString().split('T')[0]  // "2026-01-28"
+    },
+
+    /**
+     * 타임스탬프를 날짜 형식으로 변환 (구분선용)
+     * @param {string} timestamp - ISO 형식 날짜 문자열
+     * @returns {string} "2026년 1월 28일" 형식
+     */
+    formatDate(timestamp) {
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
     },
 
     /**
@@ -428,5 +517,29 @@ export default {
 .card {
   /* 카드 최대 높이: 화면 높이 - 여백 */
   max-height: calc(100vh - 2rem);
+}
+
+/* 날짜 구분선 스타일 */
+.date-separator {
+  position: relative;
+}
+
+/* 날짜 구분선 좌우 라인 */
+.date-separator::before,
+.date-separator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30%;
+  height: 1px;
+  background-color: #dee2e6;
+}
+
+.date-separator::before {
+  left: 5%;
+}
+
+.date-separator::after {
+  right: 5%;
 }
 </style>
