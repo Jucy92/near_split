@@ -1,5 +1,6 @@
 package com.nearsplit.domain.split_group.repository;
 
+import com.nearsplit.config.QueryDslConfig;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -17,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
+@Import(QueryDslConfig.class)  // QueryDSL의 JPAQueryFactory 빈 로드
 @Transactional
 @Slf4j
 class SplitGroupRepositoryTest {
@@ -41,10 +44,10 @@ class SplitGroupRepositoryTest {
 
         // then
         assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getCurrentParticipants()).isEqualTo(1);
+        assertThat(saved.getCurrentParticipants()).isEqualTo(0);  // 방장은 참여자 목록에 포함 안 됨
 //        assertThat(saved.getClosedAt()).isEqualTo(LocalDate.of(2025,12,30));
         assertThat(saved.getClosedAt()).isEqualTo(LocalDate.now().plusDays(7));
-        assertThat(saved.getStatus()).isEqualTo("RECRUITING");
+        assertThat(saved.getStatus()).isEqualTo(SplitGroupStatus.RECRUITING);  // Enum 비교
         assertThat(saved.getParticipants()).isEmpty();
 
     }
@@ -102,7 +105,7 @@ class SplitGroupRepositoryTest {
         splitGroupRepository.save(closed);
 
         // when
-        List<SplitGroup> recruitingGroups = splitGroupRepository.findByStatus("RECRUITING");
+        List<SplitGroup> recruitingGroups = splitGroupRepository.findByStatus(SplitGroupStatus.RECRUITING);
 
         // then
         assertThat(recruitingGroups).hasSize(1);

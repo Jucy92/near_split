@@ -69,8 +69,8 @@ class AuthControllerTest {      // 로그인 및 쿠키 테스트
                 .andExpect(cookie().exists("accessToken"))
                 .andExpect(cookie().httpOnly("accessToken", true))
                 .andExpect(cookie().path("accessToken", "/"))
-                .andExpect(jsonPath("$.userResponse.email").value("test1@test.com"))
-                .andExpect(jsonPath("$.userResponse.nickname").value("사용자1"));
+                .andExpect(jsonPath("$.data.userResponse.email").value("test1@test.com"))
+                .andExpect(jsonPath("$.data.userResponse.nickname").isNotEmpty());  // 닉네임 자동 생성됨
     }
 
     @Test

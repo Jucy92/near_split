@@ -1,12 +1,15 @@
 package com.nearsplit.domain.split_group.repository;
 
+import com.nearsplit.config.QueryDslConfig;
 import com.nearsplit.domain.split_group.entity.Participant;
+import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -16,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
+@Import(QueryDslConfig.class)  // QueryDSL의 JPAQueryFactory 빈 로드
 @Transactional
 @Slf4j
 class ParticipantRepositoryTest {
@@ -57,8 +61,8 @@ class ParticipantRepositoryTest {
 
         // then
         assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getStatus()).isEqualTo("PENDING"); // 기본값
-        assertThat(saved.getSplitGroup().getId()).isEqualTo(participant.getId());
+        assertThat(saved.getStatus()).isEqualTo(ParticipantStatus.PENDING); // 기본값 (Enum 비교)
+        assertThat(saved.getSplitGroup().getId()).isEqualTo(splitGroup.getId());  // splitGroup ID와 비교
         assertThat(saved.getJoinedAt()).isNotNull();
     }
     @Test

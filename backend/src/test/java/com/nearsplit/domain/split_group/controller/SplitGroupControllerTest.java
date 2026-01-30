@@ -60,6 +60,7 @@ class SplitGroupControllerTest {
     @Autowired
     private ParticipantRepository groupParticipantRepository;
     private Long userId, userId2, userId3;
+    private Long splitGroupId;  // BeforeEach에서 생성된 그룹 ID
     private String token, token2, token3;
 
     @BeforeEach
@@ -90,6 +91,7 @@ class SplitGroupControllerTest {
         request.setClosedAt(LocalDate.now().plusDays(7));
 
         SplitGroup splitGroup = splitGroupService.createSplitGroup(userId, request);
+        splitGroupId = splitGroup.getId();  // 생성된 그룹 ID 저장
         log.info("생성된 소그룹 정보={}",splitGroup);
     }
 
@@ -175,29 +177,27 @@ class SplitGroupControllerTest {
 
 
     @Test
-    void 내_그룹_조회_방장() throws Exception {
-        // given - 그룹 생성 (나는 방장)
-        SplitGroupRequest request = new SplitGroupRequest();
-        request.setTitle("사과 10kg 소분");
-        request.setTotalPrice(new BigDecimal("50000"));
-        request.setMaxParticipants(5);
-        request.setPickupLocation("서울시 강남구");
-        request.setClosedAt(LocalDate.now().plusDays(7));
+    void 내_그룹_조회_참여자() throws Exception {
+        // given - user2가 기존 그룹(BeforeEach에서 생성)에 참여 신청 후 승인
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
+                .header("Authorization", "Bearer " + token2)
+                .contentType(MediaType.APPLICATION_JSON));
 
-        String requestBody = objectMapper.writeValueAsString(request);
+        ParticipantActionRequest approveRequest = new ParticipantActionRequest();
+        approveRequest.setParticipantUserId(userId2);
+        String approveBody = objectMapper.writeValueAsString(approveRequest);
 
-        // 그룹 생성
-        mockMvc.perform(post("/api/split")
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/approve")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody));
+                .content(approveBody));
 
-        // when & then - 내 그룹 조회
+        // when & then - user2의 내 그룹 조회
         mockMvc.perform(get("/api/split/my")
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + token2))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("사과 10kg 소분"))
-                .andExpect(jsonPath("$[0].isHost").value(true));  // ← 방장 확인
+                .andExpect(jsonPath("$[0].title").value("샤브샤브 재료 소분 모임"))
+                .andExpect(jsonPath("$[0].isHost").value(false));  // ← 참여자 확인
     }
 
     @Test
@@ -215,142 +215,148 @@ class SplitGroupControllerTest {
 
     @Test
     void 그룹_참여_신청_성공() throws Exception {
-        mockMvc.perform(post("/api/split/1/join")
+        // joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2));
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()));
 
-        mockMvc.perform(post("/api/split/1/join")
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token3)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(3));
+                .andExpect(jsonPath("$.data.userId").value(userId3.intValue()));
     }
     @Test
     void 그룹_참여_신청_실패_인증없음() throws Exception {
-        mockMvc.perform(post("/api/split/1/join")
+        // 인증 없이 요청 시 401 Unauthorized
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         //.header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
     @Test
     void 그룹_참여_신청_실패_중복요청() throws Exception {
-        mockMvc.perform(post("/api/split/1/join")
+        // joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2));
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()));
 
-        mockMvc.perform(post("/api/split/1/join")
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("이미 참여 신청한 그룹입니다."));
+                .andExpect(jsonPath("$.message").value("이미 참여 신청한 그룹입니다."));
     }
     @Test
     void 그룹_참여_신청_실패_존재하지않는그룹() throws Exception {
-        mockMvc.perform(post("/api/split/21/join")
+        // BusinessException(GROUP_NOT_FOUND) → 404 NOT_FOUND
+        mockMvc.perform(post("/api/split/999/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("존재하지 않는 그룹입니다."));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("존재하지 않는 그룹입니다"));
 
     }
 
     @Test
     void 참여자_승인_성공() throws Exception {
-        // given
-        mockMvc.perform(post("/api/split/1/join")
+        // given - joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()))
+                .andExpect(jsonPath("$.data.status").value(ParticipantStatus.PENDING.name()));
 
         ParticipantActionRequest request = new ParticipantActionRequest();
         request.setParticipantUserId(userId2);
         String requestBody = objectMapper.writeValueAsString(request);
 
-        // when & then
-        mockMvc.perform(post("/api/split/1/approve")
+        // when & then - approveSplitGroup은 ParticipantResponse 직접 반환 → $.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/approve")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
 
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.userId").value(userId2.intValue()))
                 .andExpect(jsonPath("$.status").value(ParticipantStatus.APPROVED.name()));
     }
     @Test
     void 참여자_승인_실패_방장이아님() throws Exception {
-        // given
-        mockMvc.perform(post("/api/split/1/join")
+        // given - joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()))
+                .andExpect(jsonPath("$.data.status").value(ParticipantStatus.PENDING.name()));
 
         ParticipantActionRequest request = new ParticipantActionRequest();
         request.setParticipantUserId(userId2);
         String requestBody = objectMapper.writeValueAsString(request);
 
         // when & then
-        mockMvc.perform(post("/api/split/1/approve")
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/approve")
                 .header("Authorization", "Bearer " + token2)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
 
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("방장만 승인할 수 있습니다."));
+                .andExpect(jsonPath("$.message").value("방장만 승인할 수 있습니다."));
     }
     @Test
     void 참여자_거절_성공() throws Exception {
-        // given
-        mockMvc.perform(post("/api/split/1/join")
+        // given - joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()))
+                .andExpect(jsonPath("$.data.status").value(ParticipantStatus.PENDING.name()));
 
         ParticipantActionRequest request = new ParticipantActionRequest();
         request.setParticipantUserId(userId2);
         String requestBody = objectMapper.writeValueAsString(request);
 
-        // when & then
-        mockMvc.perform(post("/api/split/1/reject")
+        // when & then - rejectSplitGroup은 ParticipantResponse 직접 반환 → $.userId
+        // 거절 시 참여자 삭제됨 (REJECTED 상태로 남기지 않음)
+        // 반환되는 participant는 삭제 전 객체이므로 userId 확인만 가능
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/reject")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
 
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.status").value(ParticipantStatus.REJECTED.name()));
+                .andExpect(jsonPath("$.userId").value(userId2.intValue()));
+                // 참여자가 삭제되었으므로 status 체크 제거
     }
     @Test
     void 참여자_거절_실패_방장이아님() throws Exception {
-        // given
-        mockMvc.perform(post("/api/split/1/join")
+        // given - joinSplitGroup은 ApiResponse로 감싸서 반환 → $.data.userId
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/join")
                         .header("Authorization", "Bearer " + token2)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(2))
-                .andExpect(jsonPath("$.status").value(ParticipantStatus.PENDING.name()));   // DB에 저장된 이름으로 비교하거나, 직접 문자열로 비교..
+                .andExpect(jsonPath("$.data.userId").value(userId2.intValue()))
+                .andExpect(jsonPath("$.data.status").value(ParticipantStatus.PENDING.name()));
 
         ParticipantActionRequest request = new ParticipantActionRequest();
         request.setParticipantUserId(userId2);
         String requestBody = objectMapper.writeValueAsString(request);
 
         // when & then
-        mockMvc.perform(post("/api/split/1/reject")
+        mockMvc.perform(post("/api/split/" + splitGroupId + "/reject")
                 .header("Authorization", "Bearer " + token2)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
 
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("방장만 거절할 수 있습니다."));
+                .andExpect(jsonPath("$.message").value("방장만 거절할 수 있습니다."));
     }
 
     @Test

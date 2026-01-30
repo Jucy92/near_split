@@ -58,7 +58,7 @@ class UserControllerTest {  //  JWT 인증 테스트
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test1@test.com"))
                 .andExpect(jsonPath("$.name").value("사용자1"))
-                .andExpect(jsonPath("$.nickname").value("테스터1"));
+                .andExpect(jsonPath("$.nickname").isNotEmpty());  // 닉네임 자동 생성
     }
 
     @Test
@@ -72,7 +72,7 @@ class UserControllerTest {  //  JWT 인증 테스트
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test1@test.com"))
                 .andExpect(jsonPath("$.name").value("사용자1"))
-                .andExpect(jsonPath("$.nickname").value("테스터1"));
+                .andExpect(jsonPath("$.nickname").isNotEmpty());  // 닉네임 자동 생성
 
     }
 
@@ -113,17 +113,28 @@ class UserControllerTest {  //  JWT 인증 테스트
 
     @Test
     void 프로필_수정_실패_중복닉네임() throws Exception {
-        // given
+        // given - 다른 사용자의 닉네임을 미리 "고정닉네임"으로 수정
         RegisterRequest register = RegisterRequest.builder()
                 .email("another@test.com")
                 .password("test1234")
                 .name("사용자2")
-                .nickname("다른닉네임")
                 .build();
-        authService.register(register);
+        Long anotherUserId = authService.register(register);
 
+        // 다른 사용자의 닉네임을 특정 값으로 수정 (API 호출로)
+        String anotherToken = jwtUtil.generateToken(anotherUserId);
+        UserUpdateRequest anotherUpdate = UserUpdateRequest.builder()
+                .nickname("고정닉네임")
+                .build();
+        mockMvc.perform(patch("/api/users/me")
+                        .header("Authorization", "Bearer " + anotherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(anotherUpdate)))
+                .andExpect(status().isOk());
+
+        // 내 닉네임을 다른 사용자의 닉네임으로 변경 시도
         UserUpdateRequest updateRequest = UserUpdateRequest.builder()
-                .nickname("다른닉네임")
+                .nickname("고정닉네임")  // 다른 사용자가 이미 사용 중
                 .address("서울시 강남구")
                 .location("강남역")
                 .build();
@@ -136,39 +147,37 @@ class UserControllerTest {  //  JWT 인증 테스트
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().is4xxClientError());
-
-
     }
 
     @Test
     void 프로필_수정_성공_중복닉네임_본인() throws Exception {
-        // given
-        RegisterRequest register = RegisterRequest.builder()
-                .email("another@test.com")
-                .password("test1234")
-                .name("사용자2")
-                .nickname("다른닉네임")
-                .build();
-        authService.register(register);
-
-        UserUpdateRequest updateRequest = UserUpdateRequest.builder()
-//                .nickname("다른닉네임")
-                .nickname("테스터1")
-                .address("서울시 강남구")
-                .location("강남역")
+        // given - 먼저 내 닉네임을 특정 값으로 수정
+        UserUpdateRequest firstUpdate = UserUpdateRequest.builder()
+                .nickname("내닉네임")
                 .build();
 
         Cookie cookie = new Cookie("accessToken", token);
+
+        mockMvc.perform(patch("/api/users/me")
+                        .cookie(cookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstUpdate)))
+                .andExpect(status().isOk());
+
+        // 같은 닉네임으로 다시 수정 시도 (본인이므로 성공해야 함)
+        UserUpdateRequest updateRequest = UserUpdateRequest.builder()
+                .nickname("내닉네임")  // 본인 닉네임
+                .address("서울시 강남구")
+                .location("강남역")
+                .build();
 
         // when & then
         mockMvc.perform(patch("/api/users/me")
                         .cookie(cookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
-
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nickname").value("테스터1"));
-
+                .andExpect(jsonPath("$.nickname").value("내닉네임"));
     }
 
 
