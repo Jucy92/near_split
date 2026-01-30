@@ -5,7 +5,9 @@ import com.nearsplit.domain.split_group.dto.*;
 import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.service.SplitGroupService;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.Fetch;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/split")
 @RequiredArgsConstructor
+@Slf4j
 public class SplitGroupController {
     private final SplitGroupService splitGroupService;
 
@@ -60,7 +63,7 @@ public class SplitGroupController {
 
     @GetMapping("/{groupId}")
     public ResponseEntity<ApiResponse<SplitGroupResponse>> getSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
-        SplitGroup splitGroup = splitGroupService.getSplitGroup(groupId, userId);
+        Tuple splitGroup = splitGroupService.getSplitGroup(groupId, userId);    // nickname 담아주기 위해 타입 변경
         return ResponseEntity.ok((ApiResponse.success(SplitGroupResponse.from(splitGroup))));
     }
 
@@ -75,14 +78,17 @@ public class SplitGroupController {
     }
 
     @PostMapping("/{groupId}/join")
-    public ResponseEntity<?> joinSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+    public ResponseEntity<ApiResponse<ParticipantResponse>> joinSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
         Participant participant = splitGroupService.joinSplitGroup(groupId, userId);
-        return ResponseEntity.ok().body(participant);
+        ParticipantResponse response = ParticipantResponse.from(participant);
+        return ResponseEntity.ok().body(ApiResponse.success(response));
     }
 
     @DeleteMapping("/{groupId}/join")
-    public ResponseEntity<?> cancelJoin(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok().body(splitGroupService.cancelJoin(groupId, userId)); // 삭제된 내용 전달
+    public ResponseEntity<ApiResponse<ParticipantResponse>> cancelJoin(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
+
+        ParticipantResponse response = ParticipantResponse.from(splitGroupService.cancelJoin(groupId, userId));
+        return ResponseEntity.ok().body(ApiResponse.success(response));
     }
 
     @PostMapping("/{groupId}/approve")

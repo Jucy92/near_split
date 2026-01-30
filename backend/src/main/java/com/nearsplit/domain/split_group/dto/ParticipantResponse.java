@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 public class ParticipantResponse {
 
     //private SplitGroup splitGroup;    // 순환 참조 위험
+    private Long id;
+//    private Long splitGroupId;
     private Long userId;
     private Integer quantity;
     private BigDecimal shareAmount;
@@ -23,6 +25,8 @@ public class ParticipantResponse {
 
     public static ParticipantResponse from(Participant participant) {
         return ParticipantResponse.builder()
+                .id(participant.getId())
+//                .splitGroupId(participant.getSplitGroup().getId())
                 .userId(participant.getUserId())
                 .quantity(participant.getQuantity())
                 .shareAmount(participant.getShareAmount())

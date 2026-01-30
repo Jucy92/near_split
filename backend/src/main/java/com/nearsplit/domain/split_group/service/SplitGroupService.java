@@ -13,6 +13,7 @@ import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.repository.UserRepository;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.math.RoundingMode;
 import java.sql.Ref;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -92,10 +94,14 @@ public class SplitGroupService {
         return participantGroups;
     }
 
-    public SplitGroup getSplitGroup(Long splitGroupId, Long userId) {
+    public Tuple getSplitGroup(Long splitGroupId, Long userId) {
+        /*  // 기존에 nickname 없이 hostUserId만 가져간 경우
         SplitGroup group = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
+        */
+        Tuple group = splitGroupRepository.findSplitGroupWithNickname(splitGroupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
         /* // 볼 수 있어야 참여 신청을 하지..
         if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
             throw new IllegalArgumentException("권한이 없는 접근 입니다.");

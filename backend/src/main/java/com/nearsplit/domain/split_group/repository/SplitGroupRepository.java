@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SplitGroupRepository extends JpaRepository<SplitGroup, Long> {
+public interface SplitGroupRepository extends JpaRepository<SplitGroup, Long>, SplitGroupRepositoryCustom {
     public List<SplitGroup> findByHostUserId(Long userId);      // 이게 단독이면 무슨 쓸모가 있지..? 내가 방장인거 다 찾는건가..
 
     Optional<SplitGroup> findByIdAndHostUserId(Long splitGroupId, Long userId);
@@ -20,8 +20,8 @@ public interface SplitGroupRepository extends JpaRepository<SplitGroup, Long> {
     //Page<SplitGroup> findByStatusOrderByCreatedAtDesc(SplitGroupStatus status);   // 네이밍 정렬 방법
     Page<SplitGroup> findByStatus(SplitGroupStatus status, Pageable pageable);
 
-    // 상태로 그룹 조회
-    public List<SplitGroup> findByStatus(String status);
+    // 상태로 그룹 조회 (Enum 사용)
+    public List<SplitGroup> findByStatus(SplitGroupStatus status);
     // 호스트 + 상태로 조회
 
 }
