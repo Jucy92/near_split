@@ -36,4 +36,7 @@ public class Participant {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    @Transient
+    private String nickname;
+
 }

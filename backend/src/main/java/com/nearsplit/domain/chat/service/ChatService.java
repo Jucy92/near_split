@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate simpMessagingTemplate;
 
     // 메시지 저장
     @Transactional
@@ -50,6 +52,7 @@ public class ChatService {
 
         ChatMessage saved = chatMessageRepository.save(message);
         log.info("메시지 저장 완료: groupId={}, messageId={}", request.getGroupId(), saved.getId());
+        simpMessagingTemplate.convertAndSend("/topic/notification/"+ "사용자들...","내용...");    // 근데 여기서 포문 돌면서 다 찾아..?
 
         return saved;
     }

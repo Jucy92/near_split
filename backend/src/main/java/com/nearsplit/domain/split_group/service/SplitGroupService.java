@@ -12,6 +12,7 @@ import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
+import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Ref;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -94,20 +98,21 @@ public class SplitGroupService {
         return participantGroups;
     }
 
-    public Tuple getSplitGroup(Long splitGroupId, Long userId) {
-        /*  // 기존에 nickname 없이 hostUserId만 가져간 경우
+    public SplitGroup getSplitGroup(Long splitGroupId, Long userId) {
+          // 기존에 nickname 없이 hostUserId만 가져간 경우
         SplitGroup group = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+        
+        // queryDSL 설정해서 SplitGroupRepositoryImpl.findSplitGroupWithNickname hostNickname은 가져왔으나, participant 들의 Nickname 가져오기 위해 주석..
+        // Tuple group = splitGroupRepository.findSplitGroupWithNickname(splitGroupId).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        */
-        Tuple group = splitGroupRepository.findSplitGroupWithNickname(splitGroupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-        /* // 볼 수 있어야 참여 신청을 하지..
-        if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
-            throw new IllegalArgumentException("권한이 없는 접근 입니다.");
-        }
-        */
+        List<Long> userIds = group.getParticipants().stream().map(p -> p.getUserId()).toList();
 
+        userIds = new ArrayList<>(userIds);
+        userIds.add(group.getHostUserId());
+
+        Map<Long, String> userMap = userRepository.findAllById(userIds).stream().collect(Collectors.toMap(u -> u.getId(), User::getNickname));
+        group.getParticipants().forEach(p -> p.setNickname(userMap.get(p.getUserId())));    // 참여자들 정보에 닉네임 추가해주기
         return group;
 
     }

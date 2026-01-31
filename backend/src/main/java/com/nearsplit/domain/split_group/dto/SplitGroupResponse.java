@@ -63,8 +63,6 @@ public class SplitGroupResponse {
     public static SplitGroupResponse from(Tuple tuple) {
         SplitGroup group = tuple.get(splitGroup);
         String nickname = tuple.get(user.nickname);
-        String s = tuple.get(user.name);
-        log.info("name={}", s);
 
         return SplitGroupResponse.builder()
                 .id(group.getId())

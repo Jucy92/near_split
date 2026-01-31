@@ -63,7 +63,8 @@ public class SplitGroupController {
 
     @GetMapping("/{groupId}")
     public ResponseEntity<ApiResponse<SplitGroupResponse>> getSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
-        Tuple splitGroup = splitGroupService.getSplitGroup(groupId, userId);    // nickname 담아주기 위해 타입 변경
+        SplitGroup splitGroup = splitGroupService.getSplitGroup(groupId, userId);
+        log.info("splitGroup={}",splitGroup);
         return ResponseEntity.ok((ApiResponse.success(SplitGroupResponse.from(splitGroup))));
     }
 

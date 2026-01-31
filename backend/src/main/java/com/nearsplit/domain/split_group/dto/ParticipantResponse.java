@@ -15,8 +15,9 @@ public class ParticipantResponse {
 
     //private SplitGroup splitGroup;    // 순환 참조 위험
     private Long id;
-//    private Long splitGroupId;
+    private Long splitGroupId;
     private Long userId;
+    private String userNickname;
     private Integer quantity;
     private BigDecimal shareAmount;
     private ParticipantStatus status;              // PENDING, APPROVED, REJECTED
@@ -26,8 +27,22 @@ public class ParticipantResponse {
     public static ParticipantResponse from(Participant participant) {
         return ParticipantResponse.builder()
                 .id(participant.getId())
-//                .splitGroupId(participant.getSplitGroup().getId())
+                .splitGroupId(participant.getSplitGroup().getId())
                 .userId(participant.getUserId())
+                .userNickname(participant.getNickname())
+                .quantity(participant.getQuantity())
+                .shareAmount(participant.getShareAmount())
+                .status(participant.getStatus())
+                .joinedAt(participant.getJoinedAt())
+                .build();
+    }
+
+    public static ParticipantResponse from(Participant participant, String nickname) {
+        return ParticipantResponse.builder()
+                .id(participant.getId())
+                .splitGroupId(participant.getSplitGroup().getId())
+                .userId(participant.getUserId())
+                .userNickname(nickname)
                 .quantity(participant.getQuantity())
                 .shareAmount(participant.getShareAmount())
                 .status(participant.getStatus())
