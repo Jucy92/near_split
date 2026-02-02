@@ -64,7 +64,6 @@ public class SplitGroupController {
     @GetMapping("/{groupId}")
     public ResponseEntity<ApiResponse<SplitGroupResponse>> getSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
         SplitGroup splitGroup = splitGroupService.getSplitGroup(groupId, userId);
-        log.info("splitGroup={}",splitGroup);
         return ResponseEntity.ok((ApiResponse.success(SplitGroupResponse.from(splitGroup))));
     }
 

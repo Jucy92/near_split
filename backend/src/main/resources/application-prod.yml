@@ -1,0 +1,48 @@
+spring:
+  # 데이터소스: H2 → PostgreSQL
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+
+  # H2 콘솔 비활성화 (프로덕션에서 보안상 필수)
+  h2:
+    console:
+      enabled: false
+
+  # JPA: PostgreSQL dialect로 변경
+  jpa:
+    hibernate:
+      ddl-auto: update    # 프로덕션에서는 validate 권장하지만, 초기엔 update
+    show-sql: false       # 프로덕션에서 SQL 로그 끄기
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  # Redis (Railway에서 Redis 추가 시)
+  data:
+    #redis:
+      #host: ${REDIS_HOST:localhost}
+      #port: ${REDIS_PORT:6379}
+
+  # Kafka (Railway에서 Kafka 추가 시, 없으면 주석 처리)
+  # kafka:
+  #   bootstrap-servers: ${KAFKA_URL:localhost:9092}
+
+  # JWT 시크릿 - 환경변수로 주입 (보안상 필수!)
+jwt:
+  secret: ${JWT_SECRET}
+
+  # 로깅 레벨 낮추기
+logging:
+  level:
+    com.nearsplit: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+
+  # 에러 상세 정보 숨기기 (보안)
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
