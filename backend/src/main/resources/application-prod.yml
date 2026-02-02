@@ -1,7 +1,10 @@
 spring:
   # 데이터소스: H2 → PostgreSQL
   datasource:
-    url: ${DATABASE_URL}
+    #url: ${DATABASE_URL}  # postgresql://user:password@host:port/database => Spring (jdbc:postgresql://host:port/database)
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
     driver-class-name: org.postgresql.Driver
 
   # H2 콘솔 비활성화 (프로덕션에서 보안상 필수)
