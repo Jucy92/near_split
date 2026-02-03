@@ -35,7 +35,10 @@ spring:
   # JWT 시크릿 - 환경변수로 주입 (보안상 필수!)
 jwt:
   secret: ${JWT_SECRET}
-
+  # 쿠키 상태 변경
+cookie:
+  secure: true
+  same-site: None
   # 로깅 레벨 낮추기
 logging:
   level:

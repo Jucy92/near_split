@@ -62,6 +62,10 @@ jwt:
   secret: nearsplit-secret-key-change-this-in-production-must-be-at-least-256-bits
   expiration: 1800000 # 30분 #86400000  # 24 hours in milliseconds
 
+cookie:
+  secure: false
+  same-site: Lax
+
 logging:
   level:
     com.nearsplit: DEBUG

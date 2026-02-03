@@ -14,7 +14,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +29,10 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtUtil jwtUtil;
+    @Value("${cookie.secure:false}")
+    private boolean cookieSecure;   // 운영환경(개발/운영)에 따른 쿠키 설정
+    @Value("${cookie.same-site:Lax}")
+    private String cookieSameSite;
 
 
     @PostMapping("/register")
@@ -41,27 +47,18 @@ public class AuthController {
 
         Long loginId = loginResponse.getUserResponse().getId();
         String token = jwtUtil.generateToken(loginId);
-
-        Cookie cookie = new Cookie("accessToken", token);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);    // https 인지 체크 -> 개발: false, 프로덕션: true (HTTPS에서만)
-        cookie.setMaxAge(jwtUtil.getExpiration());
-
         String refreshToken = jwtUtil.generateRefreshToken(loginId);
 
-        Cookie refreshCooke = new Cookie("refreshToken", refreshToken);
-        refreshCooke.setPath("/");
-        refreshCooke.setHttpOnly(true);
-        refreshCooke.setSecure(false);
-        refreshCooke.setMaxAge(604_800_000);    // 7일
+        ResponseCookie cookie = generateCookie("accessToken", token);
+        ResponseCookie refreshCooke = refreshCookie("refreshToken", refreshToken);
 
-        response.addCookie(cookie);
-        response.addCookie(refreshCooke);
+
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());          // 30분
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCooke.toString());   // 7일
 
 
         return ResponseEntity.ok().body(ApiResponse.success(loginResponse));
-        //return ResponseEntity.ok(ApiResponse.success(loginResponse));
     }
 
     @PostMapping("/refresh")
@@ -71,15 +68,12 @@ public class AuthController {
 
             switch (jwtUtil.validToken(refreshToken)) {
                 case VALID:
-                    String token = jwtUtil.generateToken(jwtUtil.getUserId(refreshToken));
-                    Cookie cookie = new Cookie("accessToken", token);
-                    cookie.setPath("/");
-                    cookie.setHttpOnly(true);
-                    cookie.setSecure(false);
-                    cookie.setMaxAge(jwtUtil.getExpiration());
 
-                    response.addCookie(cookie);
-                    log.info("토큰 갱신 성공");
+                    String token = jwtUtil.generateToken(jwtUtil.getUserId(refreshToken));
+
+                    ResponseCookie cookie = generateCookie("accessToken", token);
+                    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
                     return ResponseEntity.ok().body(ApiResponse.successWithMessage("토큰 갱신 성공"));
                 case EXPIRED:
                     deleteCookie(response);
@@ -91,7 +85,6 @@ public class AuthController {
         deleteCookie(response);
         return ResponseEntity.status(401).body(ApiResponse.success(ErrorCode.REFRESH_INVALID));
     }
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response /*@AuthenticationPrincipal Long userId*/) { // Spring Security 통과해서 와서 auth 등록은 된 상태라 사용은 가능..
         deleteCookie(response);
@@ -120,20 +113,48 @@ public class AuthController {
         return null;
     }
 
-    private static void deleteCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("accessToken", null);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
+    private ResponseCookie generateCookie(String cookieName, String token) {
 
-        response.addCookie(cookie);
-        Cookie refreshCookie = new Cookie("refreshToken", null);
-        refreshCookie.setPath("/");
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false);
+        return ResponseCookie.from(cookieName, token)
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .maxAge(jwtUtil.getExpiration())
+                .build();
+    }
 
-        response.addCookie(cookie);
-        response.addCookie(refreshCookie);
+    private ResponseCookie refreshCookie(String cookieName, String refreshToken) {
+
+        return ResponseCookie.from(cookieName, refreshToken)
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .maxAge(604_800_000)
+                .build();
+    }
+
+    private void deleteCookie(HttpServletResponse response) {
+
+        ResponseCookie accessCookie = ResponseCookie.from("accessToken", "")
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .maxAge(0)  // 삭제!
+                .build();
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", "")
+                .path("/")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .maxAge(0)  // 삭제!
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
     }
 
 }
