@@ -1,6 +1,47 @@
+<!--
+  파일: ProductCreateView.vue
+  설명: 상품 수기 등록 페이지
+        - 상품 정보 입력 폼
+        - 이미지 URL 입력 시 미리보기 표시
+        - 등록 후 상품 목록으로 이동
+
+  ==================== 페이지 접근 흐름 ====================
+  1. ProductListView 또는 HomeView에서 "상품 등록" 버튼 클릭
+  2. router가 /products/new로 이동
+  3. ProductCreateView 렌더링
+  4. 사용자가 상품 정보 입력
+  5. "상품 등록" 버튼 클릭 → handleCreate()
+  6. POST /api/products 호출
+  7. 성공 시 상품 목록 페이지로 이동 (/products)
+
+  ==================== API 목록 ====================
+  | 기능       | 메서드 | 엔드포인트   | 호출 함수       |
+  |------------|--------|--------------|-----------------|
+  | 상품 등록  | POST   | /api/products| createProduct() |
+
+  ==================== 백엔드 요청 구조 ====================
+  POST /api/products
+  Request Body (ProductRequest):
+  {
+    "name": "오메가3 1000mg 180정",
+    "price": 35000,
+    "externalSource": "MANUAL",   // COUPANG | COSTCO | MANUAL
+    "externalId": "",             // 외부 사이트 상품 ID (선택)
+    "productUrl": "https://...",  // 상품 페이지 URL (선택)
+    "imageUrl": "https://...",    // 상품 이미지 URL (선택)
+    "description": "..."          // 상품 설명 (선택)
+  }
+
+  ==================== 출처(externalSource) 옵션 ====================
+  | 값      | 의미       | 설명                     |
+  |---------|------------|--------------------------|
+  | MANUAL  | 수기 등록  | 직접 정보 입력           |
+  | COUPANG | 쿠팡       | 쿠팡 상품 정보 참조      |
+  | COSTCO  | 코스트코   | 코스트코 상품 정보 참조  |
+-->
 <template>
   <div class="container py-4">
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더: 목록 링크 + 페이지 제목 -->
     <div class="d-flex align-items-center mb-4">
       <router-link to="/products" class="btn btn-outline-secondary me-3">&larr; 목록</router-link>
       <h3 class="mb-0">상품 등록 (수기)</h3>

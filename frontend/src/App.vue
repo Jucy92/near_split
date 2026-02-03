@@ -2,7 +2,9 @@
   파일: App.vue
   설명: Vue 애플리케이션의 루트 컴포넌트
         - 모든 페이지의 최상위 부모 컴포넌트
-        - NavBar 표시 여부 결정 (로그인 필요 페이지에서만)
+        - NavBar 표시 여부 결정:
+          1. 로그인 필요 페이지에서만 (requiresAuth: true)
+          2. 팝업 창이 아닐 때만 (채팅 팝업에서는 NavBar 숨김)
         - 로그인 시 WebSocket 연결 관리 (알림 수신용)
         - 사용자 프로필 정보 관리
 -->
@@ -69,9 +71,13 @@ export default {
   // ==================== 계산된 속성 (computed) ====================
   computed: {
     // 현재 라우트에서 NavBar를 표시할지 결정
-    // requiresAuth: true인 페이지에서만 NavBar 표시
+    // 조건 1: requiresAuth: true인 페이지에서만 NavBar 표시
+    // 조건 2: 팝업 창이 아닐 때만 표시 (window.opener가 없을 때)
+    //         채팅 팝업처럼 별도 창으로 열린 경우 NavBar 숨김
     showNavBar() {
-      return this.$route.meta.requiresAuth === true
+      const requiresAuth = this.$route.meta.requiresAuth === true
+      const isPopup = !!window.opener  // 팝업 창 여부 확인
+      return requiresAuth && !isPopup
     }
   },
 

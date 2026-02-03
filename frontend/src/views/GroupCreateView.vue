@@ -1,6 +1,55 @@
+<!--
+  파일: GroupCreateView.vue
+  설명: 소분 그룹 생성 페이지
+        - 그룹 정보 입력 폼 (제목, 금액, 인원, 장소, 마감일)
+        - 1인당 예상 금액 실시간 계산
+        - 그룹 생성 후 상세 페이지로 이동
+
+  ==================== 페이지 접근 흐름 ====================
+  1. GroupListView 또는 HomeView에서 "그룹 생성" 버튼 클릭
+  2. router가 /groups/new로 이동
+  3. GroupCreateView 렌더링
+  4. 사용자가 정보 입력 (computed로 1인당 금액 실시간 계산)
+  5. "그룹 생성" 버튼 클릭 → handleCreate()
+  6. POST /api/split 호출
+  7. 성공 시 생성된 그룹의 상세 페이지로 이동 (/groups/{id})
+
+  ==================== API 목록 ====================
+  | 기능       | 메서드 | 엔드포인트 | 호출 함수     |
+  |------------|--------|------------|---------------|
+  | 그룹 생성  | POST   | /api/split | createGroup() |
+
+  ==================== 백엔드 요청/응답 구조 ====================
+  POST /api/split
+  Request Body (SplitGroupRequest):
+  {
+    "title": "코스트코 영양제 모집",
+    "totalPrice": 150000,
+    "maxParticipants": 20,
+    "pickupLocation": "강남역 2번 출구",
+    "closedAt": "2026-02-15"
+  }
+
+  Response (SplitGroupResponse):
+  {
+    "id": 1,
+    "hostUserId": 100,
+    "title": "코스트코 영양제 모집",
+    "totalPrice": 150000,
+    "maxParticipants": 20,
+    "currentParticipants": 1,
+    "groupState": "RECRUITING",
+    ...
+  }
+
+  ==================== 1인당 금액 계산 ====================
+  - computed: pricePerPerson
+  - 공식: Math.ceil(totalPrice / maxParticipants)
+  - 방장 포함 여부는 백엔드 정책에 따름 (현재 방장 포함 N+1빵)
+-->
 <template>
   <div class="container py-4">
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더: 목록 링크 + 페이지 제목 -->
     <div class="d-flex align-items-center mb-4">
       <router-link to="/groups" class="btn btn-outline-secondary me-3">&larr; 목록</router-link>
       <h3 class="mb-0">소분 그룹 생성</h3>

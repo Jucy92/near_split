@@ -1,5 +1,42 @@
+// ===========================
 // Axios: HTTP 통신 라이브러리 (fetch API보다 편리함)
+// ===========================
+// 이 파일의 역할:
+// - 모든 API 요청의 기본 설정 (baseURL, timeout, headers)
+// - 요청/응답 인터셉터로 공통 로직 처리
+// - JWT 토큰 자동 갱신 (401 에러 시)
+// - 에러 알림 중복 방지 (쿨다운 시스템)
+// ===========================
 import axios from 'axios'
+
+// ===========================
+// 에러 알림 중복 방지를 위한 상태 관리
+// ===========================
+// 문제: 여러 API가 동시에 실패하면 alert이 여러 번 뜸
+// 해결: 쿨다운 시간 내에는 같은 종류의 에러 알림을 1번만 표시
+const errorState = {
+  lastAlertTime: 0,           // 마지막 alert 표시 시간
+  alertCooldown: 3000,        // 쿨다운 시간 (3초)
+  isRedirecting: false        // 로그인 페이지로 이동 중인지 (401 처리용)
+}
+
+// ===========================
+// 에러 알림 표시 함수 (쿨다운 적용)
+// ===========================
+// 같은 에러가 짧은 시간 내에 여러 번 발생해도 1번만 alert 표시
+const showErrorAlert = (message) => {
+  const now = Date.now()
+
+  // 쿨다운 시간 내면 alert 표시 안 함
+  if (now - errorState.lastAlertTime < errorState.alertCooldown) {
+    console.log('에러 알림 스킵 (쿨다운 중):', message)
+    return
+  }
+
+  // 쿨다운 시간 지났으면 alert 표시
+  errorState.lastAlertTime = now
+  alert(message)
+}
 
 // ===========================
 // Axios 인스턴스 생성 (기본 설정 적용)
@@ -136,11 +173,14 @@ apiClient.interceptors.response.use(
             // 로그인 상태 초기화 (localStorage 클리어)
             localStorage.removeItem('isLoggedIn')
 
-            // 사용자에게 알림
-            alert('로그인이 만료되었습니다. 다시 로그인해주세요.')
-
-            // 로그인 페이지로 강제 이동
-            window.location.href = '/login'
+            // ⭐ 중복 리다이렉트 방지
+            if (!errorState.isRedirecting) {
+              errorState.isRedirecting = true
+              // 사용자에게 알림 (쿨다운 적용)
+              showErrorAlert('로그인이 만료되었습니다. 다시 로그인해주세요.')
+              // 로그인 페이지로 강제 이동
+              window.location.href = '/login'
+            }
 
             return Promise.reject(refreshError)
           }
@@ -151,33 +191,49 @@ apiClient.interceptors.response.use(
         // AUTH-004: Refresh Token 만료
         // 기타 401 에러: 로그인 필요
         // ─────────────────────────────────────────
+
+        // ⭐ 이미 리다이렉트 중이면 중복 처리 방지
+        if (errorState.isRedirecting) {
+          console.log('이미 로그인 페이지로 이동 중, 중복 처리 스킵')
+          return Promise.reject(error)
+        }
+
         console.log('인증 필요, 로그인 페이지로 이동')
+        errorState.isRedirecting = true  // 리다이렉트 플래그 설정
 
         // 로그인 상태 초기화
         localStorage.removeItem('isLoggedIn')
 
-        alert('로그인이 필요합니다.')
+        showErrorAlert('로그인이 필요합니다.')
         window.location.href = '/login'
       }
       // ===========================
       // 403 Forbidden: 권한 없음
       // ===========================
+      // 권한 에러는 보통 특정 기능에서만 발생하므로
+      // 각 컴포넌트에서 개별 처리하는 것이 더 좋음
+      // 여기서는 console 로그만 남기고, alert은 쿨다운 적용
       else if (status === 403) {
-        alert('권한이 없습니다.')
+        showErrorAlert('권한이 없습니다.')
       }
       // ===========================
       // 500 Internal Server Error: 서버 에러
       // ===========================
       else if (status === 500) {
-        alert('서버 오류가 발생했습니다.')
+        showErrorAlert('서버 오류가 발생했습니다.')
       }
+      // ===========================
+      // 기타 에러 (400, 404 등)
+      // ===========================
+      // 400, 404 등은 각 컴포넌트에서 개별 처리하도록
+      // 전역 alert 없이 에러만 전달
 
       console.error('API 에러:', status, error.response.data)
     } else {
       // ===========================
       // 네트워크 에러 (서버 응답 자체가 없음)
       // ===========================
-      alert('네트워크 오류가 발생했습니다.')
+      showErrorAlert('네트워크 오류가 발생했습니다.')
       console.error('네트워크 에러:', error.message)
     }
 

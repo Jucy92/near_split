@@ -1,6 +1,57 @@
+<!--
+  파일: ProfileView.vue
+  설명: 사용자 프로필 조회/수정 페이지
+        - 현재 로그인한 사용자 정보 표시
+        - 프로필 수정 기능 (닉네임, 전화번호, 주소, 지역, 비밀번호)
+        - 이름과 이메일은 수정 불가 (읽기 전용)
+
+  ==================== 페이지 접근 흐름 ====================
+  1. HomeView 또는 NavBar에서 "프로필" 클릭
+  2. router가 /profile로 이동
+  3. ProfileView 렌더링
+  4. mounted()에서 loadProfile() 호출 → GET /api/users/me
+  5. 프로필 정보 표시
+  6. "프로필 수정" 버튼 클릭 → editMode = true → 수정 폼 표시
+  7. 수정 후 "저장" → handleUpdate() → PATCH /api/users/me
+
+  ==================== 데이터 흐름 ====================
+  mounted() → loadProfile() → GET /api/users/me → this.user
+  handleUpdate() → PATCH /api/users/me → this.user 갱신
+
+  ==================== API 목록 ====================
+  | 기능         | 메서드 | 엔드포인트    | 호출 함수        |
+  |--------------|--------|---------------|------------------|
+  | 프로필 조회  | GET    | /api/users/me | getMyProfile()   |
+  | 프로필 수정  | PATCH  | /api/users/me | updateMyProfile()|
+
+  ==================== 백엔드 응답 구조 ====================
+  GET /api/users/me 응답 (UserResponse):
+  {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "홍길동",
+    "nickname": "동동이",
+    "phone": "010-1234-5678",
+    "address": "서울시 강남구",
+    "location": "강남구",
+    "profileImage": "https://example.com/image.jpg"
+  }
+
+  ==================== 수정 가능/불가 필드 ====================
+  | 필드         | 수정 가능 | 비고                    |
+  |--------------|-----------|-------------------------|
+  | name         | ❌        | 회원가입 시 설정, 변경 불가 |
+  | email        | ❌        | 회원가입 시 설정, 변경 불가 |
+  | nickname     | ✅        | 필수                    |
+  | phone        | ✅        | 선택                    |
+  | address      | ✅        | 선택                    |
+  | location     | ✅        | 선택                    |
+  | profileImage | ✅        | URL 형식               |
+  | password     | ✅        | 변경 시에만 입력        |
+-->
 <template>
   <div class="container py-4">
-    <!-- 로딩 -->
+    <!-- 로딩 스피너 -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">로딩중...</span>

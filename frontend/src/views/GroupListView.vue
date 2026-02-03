@@ -1,6 +1,66 @@
+<!--
+  파일: GroupListView.vue
+  설명: 소분 그룹 목록 페이지
+        - 전체 그룹 목록 (페이징)
+        - 내 그룹 목록 (참여 중인 그룹)
+        - 탭으로 전환 가능
+
+  ==================== 페이지 접근 흐름 ====================
+  1. HomeView에서 "그룹 목록" 또는 "보러가기" 클릭
+  2. router가 /groups로 이동
+  3. GroupListView 렌더링
+  4. mounted()에서 loadAllGroups() + loadMyGroups() 호출
+  5. 기본 탭: "전체 그룹" (currentTab = 'all')
+  6. 그룹 카드 클릭 → goToDetail(groupId) → /groups/{id}로 이동
+
+  ==================== 데이터 흐름 ====================
+  mounted() → 2개 API 순차 호출:
+    - loadAllGroups() → GET /api/split?page=0&size=9 → this.groups
+    - loadMyGroups()  → GET /api/split/my            → this.myGroups
+
+  탭 전환 시 (watch: currentTab):
+    - 'all'  → loadAllGroups()
+    - 'my'   → loadMyGroups()
+
+  ==================== API 목록 ====================
+  | 기능             | 메서드 | 엔드포인트              | 호출 함수      |
+  |------------------|--------|-------------------------|----------------|
+  | 전체 그룹 목록   | GET    | /api/split?page=N&size=M| getGroups()    |
+  | 내 그룹 목록     | GET    | /api/split/my           | getMyGroups()  |
+
+  ==================== 백엔드 응답 구조 차이 ====================
+  1. 전체 그룹 (GET /api/split) - SplitGroupResponse + Page
+     {
+       "content": [
+         { "id": 1, "groupState": "RECRUITING", ... }
+       ],
+       "totalPages": 5,
+       "totalElements": 45
+     }
+     - id 필드 사용
+     - groupState 필드 사용
+
+  2. 내 그룹 (GET /api/split/my) - SplitGroupSummaryResponse[]
+     [
+       { "groupId": 1, "status": "RECRUITING", "isHost": true, ... }
+     ]
+     - groupId 필드 사용 (id 아님!)
+     - status 필드 사용 (groupState 아님!)
+     - isHost: 방장 여부
+
+  ==================== 컴포넌트 구조 ====================
+  GroupListView
+  ├── 상단 헤더 (홈 링크 + 그룹 생성 버튼)
+  ├── 탭 (전체 그룹 / 내 그룹)
+  ├── 전체 그룹 탭
+  │   ├── 그룹 카드 그리드 (groups 배열 v-for)
+  │   └── 페이지네이션
+  └── 내 그룹 탭
+      └── 리스트 그룹 (myGroups 배열 v-for)
+-->
 <template>
   <div class="container py-4">
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더: 홈 링크 + 페이지 제목 + 그룹 생성 버튼 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div class="d-flex align-items-center">
         <router-link to="/home" class="btn btn-outline-secondary me-3">&larr; 홈</router-link>
@@ -125,13 +185,17 @@
             </div>
             <div class="text-end">
               <span class="badge bg-primary">{{ group.currentParticipants }}/{{ group.maxParticipants }}</span>
-              <router-link
-                :to="`/chat/${group.groupId}`"
+              <!--
+                채팅 버튼: 팝업 창으로 열기
+                @click.stop: 부모 요소(li)의 클릭 이벤트 전파 방지
+                openChatPopup(): window.open()으로 새 창 열기
+              -->
+              <button
                 class="btn btn-sm btn-outline-secondary ms-2"
-                @click.stop
+                @click.stop="openChatPopup(group.groupId)"
               >
                 채팅
-              </router-link>
+              </button>
             </div>
           </div>
         </div>
@@ -210,6 +274,27 @@ export default {
 
     goToDetail(groupId) {
       this.$router.push(`/groups/${groupId}`)
+    },
+
+    /**
+     * 채팅방을 팝업 창으로 열기
+     * @param {number} groupId - 그룹 ID
+     */
+    openChatPopup(groupId) {
+      // 팝업 창 크기 및 위치 설정
+      const width = 420
+      const height = 650
+      // 화면 오른쪽에 위치
+      const left = window.screen.width - width - 20
+      const top = 100
+
+      // window.open(URL, 창이름, 옵션)
+      // 창 이름을 groupId로 해서 같은 그룹 채팅은 한 창에서만 열리도록
+      window.open(
+        `/chat/${groupId}`,
+        `chat_${groupId}`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      )
     },
 
     getStatusText(status) {

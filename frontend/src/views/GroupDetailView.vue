@@ -165,16 +165,21 @@
                 <button class="btn btn-outline-danger" @click="handleDelete" :disabled="actionLoading">삭제</button>
               </template>
 
-              <!-- 채팅 버튼 (호스트 또는 승인된 참여자만) -->
-              <!-- isHost: 방장인 경우 채팅방 입장 가능 -->
-              <!-- myParticipantStatus === 'APPROVED': 참여 승인된 사용자만 채팅방 입장 가능 -->
-              <router-link
+              <!--
+                채팅 버튼 (호스트 또는 승인된 참여자만)
+                isHost: 방장인 경우 채팅방 입장 가능
+                myParticipantStatus === 'APPROVED': 참여 승인된 사용자만 채팅방 입장 가능
+
+                채팅방을 팝업 창으로 열어서 다른 페이지를 보면서도 채팅 가능
+                openChatPopup(): window.open()으로 새 창 열기
+              -->
+              <button
                 v-if="isHost || myParticipantStatus === 'APPROVED'"
-                :to="`/chat/${group.id}`"
                 class="btn btn-outline-secondary"
+                @click="openChatPopup"
               >
                 💬 채팅방
-              </router-link>
+              </button>
             </div>
           </div>
         </div>
@@ -549,6 +554,29 @@ export default {
       } finally {
         this.actionLoading = false
       }
+    },
+
+    /**
+     * 채팅방을 팝업 창으로 열기
+     * - 새 창에서 채팅을 하면서 다른 페이지 작업 가능
+     * - 창 크기: 400x600 (모바일 앱 느낌)
+     * - 위치: 화면 오른쪽
+     */
+    openChatPopup() {
+      // 팝업 창 크기 및 위치 설정
+      const width = 420
+      const height = 650
+      // 화면 오른쪽에 위치 (화면 너비 - 창 너비 - 여백)
+      const left = window.screen.width - width - 20
+      const top = 100
+
+      // window.open(URL, 창이름, 옵션)
+      // 창 이름을 groupId로 해서 같은 그룹 채팅은 한 창에서만 열리도록
+      window.open(
+        `/chat/${this.group.id}`,
+        `chat_${this.group.id}`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      )
     },
 
     getStatusText(status) {

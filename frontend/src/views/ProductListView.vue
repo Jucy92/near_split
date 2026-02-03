@@ -1,6 +1,61 @@
+<!--
+  파일: ProductListView.vue
+  설명: 상품 목록 페이지
+        - 등록된 상품 목록 표시 (그리드 카드 형태)
+        - 상품 검색 기능
+        - 상품 삭제 기능
+        - 페이지네이션
+
+  ==================== 페이지 접근 흐름 ====================
+  1. HomeView에서 "상품 목록" 버튼 클릭
+  2. router가 /products로 이동
+  3. ProductListView 렌더링
+  4. mounted()에서 loadProducts() 호출 → GET /api/products?page=0&size=12
+  5. 상품 카드 그리드로 표시
+
+  ==================== 데이터 흐름 ====================
+  mounted() → loadProducts() → GET /api/products → this.products
+
+  검색 시:
+  handleSearch() → searchProducts() → GET /api/products/search?keyword=xxx
+
+  삭제 시:
+  handleDelete(id) → deleteProduct(id) → DELETE /api/products/{id}
+
+  ==================== API 목록 ====================
+  | 기능         | 메서드 | 엔드포인트                      | 호출 함수        |
+  |--------------|--------|--------------------------------|------------------|
+  | 상품 목록    | GET    | /api/products?page=N&size=M    | getProducts()    |
+  | 상품 검색    | GET    | /api/products/search?keyword=X | searchProducts() |
+  | 상품 삭제    | DELETE | /api/products/{id}             | deleteProduct()  |
+
+  ==================== 백엔드 응답 구조 ====================
+  GET /api/products 응답 (Page<ProductResponse>):
+  {
+    "content": [
+      {
+        "id": 1,
+        "name": "오메가3 1000mg",
+        "price": 35000,
+        "externalSource": "COUPANG",  // COUPANG | COSTCO | MANUAL
+        "productUrl": "https://...",
+        "imageUrl": "https://..."
+      }
+    ],
+    "totalPages": 5,
+    "totalElements": 50
+  }
+
+  ==================== 출처(externalSource) 구분 ====================
+  | 값      | 의미       | 배지 색상 |
+  |---------|------------|-----------|
+  | COUPANG | 쿠팡       | 빨강      |
+  | COSTCO  | 코스트코   | 노랑      |
+  | MANUAL  | 수기등록   | 회색      |
+-->
 <template>
   <div class="container py-4">
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더: 홈 링크 + 페이지 제목 + 상품 등록 버튼 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div class="d-flex align-items-center">
         <router-link to="/home" class="btn btn-outline-secondary me-3">&larr; 홈</router-link>

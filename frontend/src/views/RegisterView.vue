@@ -1,3 +1,40 @@
+<!--
+  파일: RegisterView.vue
+  설명: 회원가입 페이지
+        - 이름, 이메일, 비밀번호 입력 폼
+        - 비밀번호 확인 (프론트에서만 검증, 백엔드로 전송 X)
+        - 회원가입 API 호출 후 로그인 페이지로 이동
+
+  ==================== 페이지 접근 흐름 ====================
+  1. LoginView에서 "회원가입" 링크 클릭
+  2. router가 /register로 이동
+  3. RegisterView 렌더링
+  4. 사용자가 정보 입력 후 회원가입 버튼 클릭
+  5. handleRegister() 실행
+     - 비밀번호 일치 확인 (프론트 검증)
+     - POST /api/auth/register 호출
+  6. 회원가입 성공 시 2초 후 /login으로 리다이렉트
+
+  ==================== API 목록 ====================
+  | 기능     | 메서드 | 엔드포인트        | 호출 함수   |
+  |----------|--------|-------------------|-------------|
+  | 회원가입 | POST   | /api/auth/register| register()  |
+
+  ==================== 백엔드 요청/응답 구조 ====================
+  POST /api/auth/register
+  Request Body:
+  {
+    "name": "홍길동",
+    "email": "user@example.com",
+    "password": "1234"
+  }
+  Response: 200 OK (body 없음)
+
+  ==================== 프론트 전용 필드 ====================
+  - passwordConfirm: 비밀번호 확인용 (백엔드로 전송 X)
+    → 비밀번호 일치 확인은 프론트에서만 수행
+    → 백엔드 RegisterRequest에는 name, email, password만 포함
+-->
 <template>
   <div class="container">
     <div class="row justify-content-center align-items-center min-vh-100">

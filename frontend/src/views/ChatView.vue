@@ -1,3 +1,56 @@
+<!--
+  파일: ChatView.vue
+  설명: 실시간 채팅 페이지 (WebSocket 사용)
+        - 그룹 내 실시간 메시지 송수신
+        - STOMP over SockJS 프로토콜 사용
+        - 연결 상태 표시 (연결됨/끊김)
+        - 팝업 창으로 열기 가능 (다른 페이지 작업하면서 채팅)
+        - 헤더에 그룹 타이틀 표시 (우측)
+
+  ==================== 페이지 접근 흐름 ====================
+  1. GroupDetailView 또는 GroupListView에서 "채팅방" 버튼 클릭
+  2. window.open()으로 팝업 창 열기 (또는 일반 페이지 이동)
+  3. ChatView 렌더링
+  4. mounted()에서:
+     - loadInitialData(): 기존 메시지 + 사용자 정보 로드
+     - connectWebSocket(): 실시간 연결 시작
+  5. 사용자가 메시지 입력 → sendMessage() → STOMP publish
+  6. 백엔드가 /topic/chat/{groupId}로 브로드캐스트
+  7. 구독 중인 모든 클라이언트가 메시지 수신
+
+  ==================== 기술 스택 ====================
+  - SockJS: WebSocket 폴백 라이브러리 (브라우저 호환성)
+  - STOMP: 메시징 프로토콜 (구독/발행 패턴)
+  - @stomp/stompjs: STOMP 클라이언트 라이브러리
+
+  ==================== API/WebSocket 목록 ====================
+  | 기능             | 타입      | 엔드포인트                    | 설명                      |
+  |------------------|-----------|------------------------------|---------------------------|
+  | 최근 메시지 조회 | HTTP GET  | /api/chat/{groupId}/recent   | DB에서 기존 메시지 로드    |
+  | WebSocket 연결   | WebSocket | /ws                          | SockJS 연결 엔드포인트     |
+  | 메시지 구독      | STOMP SUB | /topic/chat/{groupId}        | 그룹 채팅방 메시지 수신    |
+  | 메시지 전송      | STOMP PUB | /app/chat/{groupId}/send     | 채팅 메시지 발송           |
+
+  ==================== 메시지 타입 ====================
+  | type   | 설명                     | 화면 표시 |
+  |--------|--------------------------|-----------|
+  | CHAT   | 일반 채팅 메시지         | ✅ 말풍선 |
+  | NOTICE | 공지 메시지              | ✅ 시스템 |
+  | SYSTEM | 시스템 메시지            | ✅ 시스템 |
+  | JOIN   | 입장 메시지              | ❌ 숨김   |
+  | LEAVE  | 퇴장 메시지              | ❌ 숨김   |
+
+  ==================== 메시지 구조 (ChatMessageResponse) ====================
+  {
+    "id": 1,
+    "groupId": 5,
+    "senderId": 100,
+    "senderNickname": "홍길동",
+    "content": "안녕하세요",
+    "type": "CHAT",
+    "createdAt": "2026-01-28T10:30:00"
+  }
+-->
 <template>
   <!--
     채팅방 전체 컨테이너
@@ -17,15 +70,23 @@
         <div class="card shadow h-100 d-flex flex-column">
 
           <!-- ==================== 헤더 영역 ==================== -->
+          <!--
+            헤더 구성:
+            - 왼쪽: 뒤로가기 버튼 + 채팅방 제목 + 연결 상태
+            - 오른쪽: 그룹 타이틀 (groupTitle)
+          -->
           <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
               <!--
-                router-link: Vue Router의 링크 컴포넌트 (페이지 이동)
-                :to: 동적 바인딩으로 groupId를 포함한 URL 생성
+                뒤로가기 버튼: 팝업 창인 경우 창 닫기, 아닌 경우 그룹 상세로 이동
+                @click: handleBackClick() 메서드로 처리
               -->
-              <router-link :to="`/groups/${groupId}`" class="btn btn-outline-secondary btn-sm me-3">
-                &larr; 그룹
-              </router-link>
+              <button
+                @click="handleBackClick"
+                class="btn btn-outline-secondary btn-sm me-3"
+              >
+                &larr; 나가기
+              </button>
               <h5 class="mb-0">채팅방</h5>
               <!--
                 WebSocket 연결 상태 표시
@@ -39,7 +100,8 @@
                 {{ connected ? '연결됨' : '연결 끊김' }}
               </span>
             </div>
-            <small class="text-muted">그룹 #{{ groupId }}</small>
+            <!-- 오른쪽: 그룹 타이틀 (API에서 조회) -->
+            <span class="text-primary fw-bold">{{ groupTitle || '로딩중...' }}</span>
           </div>
 
           <!-- ==================== 메시지 목록 영역 ==================== -->
@@ -179,6 +241,7 @@ import { Client } from '@stomp/stompjs'
 // API 함수들 import
 import { getRecentMessages } from '../api/chat'  // 최근 메시지 조회 API
 import { getMyProfile } from '../api/user'       // 내 프로필 조회 API
+import { getGroup } from '../api/group'          // 그룹 정보 조회 API (타이틀 표시용)
 
 export default {
   name: 'ChatView',
@@ -192,7 +255,8 @@ export default {
       loading: true,       // 초기 로딩 상태
       connected: false,    // WebSocket 연결 상태
       stompClient: null,   // STOMP 클라이언트 인스턴스
-      currentUser: null    // 현재 로그인한 사용자 정보
+      currentUser: null,   // 현재 로그인한 사용자 정보
+      groupTitle: ''       // 그룹 타이틀 (헤더 우측 표시용)
     }
   },
 
@@ -232,10 +296,11 @@ export default {
     async loadInitialData() {
       this.loading = true  // 로딩 시작
       try {
-        // Promise.all: 두 API를 병렬로 동시 호출 (성능 향상)
-        const [messagesRes, profileRes] = await Promise.all([
+        // Promise.all: 세 API를 병렬로 동시 호출 (성능 향상)
+        const [messagesRes, profileRes, groupRes] = await Promise.all([
           getRecentMessages(this.groupId),  // GET /api/chat/{groupId}/recent
-          getMyProfile()                     // GET /api/users/me
+          getMyProfile(),                    // GET /api/users/me
+          getGroup(this.groupId)             // GET /api/split/{groupId} (그룹 타이틀 조회용)
         ])
 
         // 응답에서 데이터 추출하여 상태에 저장
@@ -249,11 +314,17 @@ export default {
         // 사용자 정보 저장 (UserController는 ApiResponse 없이 직접 반환)
         this.currentUser = profileRes.data
 
+        // 그룹 정보에서 타이틀 추출
+        // getGroup 응답 구조: { data: { data: groupInfo } } 또는 { data: groupInfo }
+        const groupData = groupRes.data.data || groupRes.data
+        this.groupTitle = groupData.title || `그룹 #${this.groupId}`
+
         // 디버그용 로그 (문제 해결 후 삭제 가능)
         console.log('=== 채팅 초기화 ===')
         console.log('현재 사용자 정보:', this.currentUser)
         console.log('현재 사용자 ID:', this.currentUser?.id)
         console.log('초기 메시지 수:', this.messages.length)
+        console.log('그룹 타이틀:', this.groupTitle)
 
         // $nextTick: DOM 업데이트가 완료된 후 실행
         // 메시지 로드 후 스크롤을 맨 아래로 이동
@@ -345,6 +416,24 @@ export default {
 
         // STOMP 클라이언트 비활성화 (연결 종료)
         this.stompClient.deactivate()
+      }
+    },
+
+    /**
+     * 뒤로가기/나가기 버튼 클릭 핸들러
+     * - 팝업 창으로 열린 경우: 창 닫기
+     * - 일반 페이지로 접근한 경우: 그룹 상세 페이지로 이동
+     *
+     * window.opener: 현재 창을 연 부모 창 (팝업인 경우에만 존재)
+     */
+    handleBackClick() {
+      // window.opener가 있으면 팝업으로 열린 것
+      if (window.opener) {
+        // 팝업 창 닫기
+        window.close()
+      } else {
+        // 일반 페이지: 그룹 상세 페이지로 이동
+        this.$router.push(`/groups/${this.groupId}`)
       }
     },
 

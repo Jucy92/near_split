@@ -2,6 +2,8 @@
   파일: NavBar.vue
   설명: 공통 네비게이션 바 컴포넌트
         - 모든 페이지 상단에 표시 (로그인/회원가입 페이지 제외)
+        - NearSplit 로고 클릭 → /home으로 이동
+        - 카테고리 메뉴: 공동구매(/groups), 상품(/products)
         - 알림 아이콘 + 읽지 않은 알림 개수 배지
         - 알림 드롭다운 (최근 알림 목록)
         - 프로필 드롭다운 (프로필, 그룹 목록, 로그아웃)
@@ -9,10 +11,35 @@
 <template>
   <nav class="navbar navbar-light bg-white border-bottom sticky-top">
     <div class="container">
-      <!-- 왼쪽: 홈 로고/링크 -->
-      <router-link to="/groups" class="navbar-brand d-flex align-items-center">
-        <span class="fw-bold text-primary">NearSplit</span>
-      </router-link>
+      <!-- 왼쪽: 홈 로고/링크 + 카테고리 메뉴 -->
+      <div class="d-flex align-items-center">
+        <!-- NearSplit 로고: 클릭 시 홈으로 이동 -->
+        <router-link to="/home" class="navbar-brand d-flex align-items-center me-4">
+          <span class="fw-bold text-primary">NearSplit</span>
+        </router-link>
+
+        <!-- 카테고리 메뉴: 공동구매 / 상품 -->
+        <ul class="nav nav-pills">
+          <li class="nav-item">
+            <router-link
+              to="/groups"
+              class="nav-link"
+              :class="{ 'active': isGroupsActive }"
+            >
+              공동구매
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="/products"
+              class="nav-link"
+              :class="{ 'active': isProductsActive }"
+            >
+              상품
+            </router-link>
+          </li>
+        </ul>
+      </div>
 
       <!-- 오른쪽: 알림 + 프로필 -->
       <div class="d-flex align-items-center">
@@ -204,6 +231,17 @@ export default {
     // 드롭다운에 표시할 최근 알림 (최대 5개)
     recentNotifications() {
       return this.notifications.slice(0, 5)
+    },
+    // 현재 경로가 공동구매(그룹) 관련 페이지인지 확인
+    // /groups 또는 /groups/로 시작하는 경로 + /chat 경로 포함
+    isGroupsActive() {
+      const path = this.$route.path
+      return path.startsWith('/groups') || path.startsWith('/chat')
+    },
+    // 현재 경로가 상품 관련 페이지인지 확인
+    // /products 또는 /products/로 시작하는 경로
+    isProductsActive() {
+      return this.$route.path.startsWith('/products')
     }
   },
 
@@ -401,5 +439,28 @@ export default {
   font-size: 0.65rem;
   min-width: 18px;
   padding: 0.25rem 0.4rem;
+}
+
+/* ==================== 카테고리 메뉴 스타일 ==================== */
+
+/* 카테고리 nav 링크 기본 스타일 */
+.nav-pills .nav-link {
+  color: #6c757d;  /* 회색 텍스트 */
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+/* 호버 시 배경색 */
+.nav-pills .nav-link:hover {
+  color: #0d6efd;
+  background-color: #e7f1ff;
+}
+
+/* 활성화된 카테고리: 파란 배경 + 흰 글씨 */
+.nav-pills .nav-link.active {
+  color: #fff;
+  background-color: #0d6efd;
 }
 </style>

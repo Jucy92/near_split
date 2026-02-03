@@ -1,10 +1,52 @@
-<!-- ===========================
-  Vue 파일 구조:
-  1. <template>: HTML (화면)
-  2. <script>: JavaScript (로직)
-  3. <style>: CSS (스타일)
-=========================== -->
+<!--
+  파일: LoginView.vue
+  설명: 로그인 페이지
+        - 이메일/비밀번호 입력 폼
+        - 로그인 API 호출 및 JWT 토큰 쿠키 저장
+        - 회원가입 페이지 링크
 
+  ==================== 페이지 접근 흐름 ====================
+  1. 사용자가 브라우저에서 / 또는 /login 접속
+  2. router/index.js의 beforeEach 가드 실행
+     - 로그인 상태 체크 (localStorage.getItem('isLoggedIn'))
+     - 미로그인 + 인증 필요 페이지 → /login으로 리다이렉트
+  3. LoginView 렌더링
+  4. 사용자가 이메일/비밀번호 입력 후 로그인 버튼 클릭
+  5. handleLogin() 실행 → POST /api/auth/login
+  6. 백엔드에서 JWT 토큰을 쿠키로 설정 (Set-Cookie 헤더)
+     - accessToken: 30분 유효
+     - refreshToken: 7일 유효
+  7. 프론트에서 localStorage에 'isLoggedIn' 저장
+  8. /home으로 리다이렉트
+
+  ==================== API 목록 ====================
+  | 기능     | 메서드 | 엔드포인트      | 호출 함수  |
+  |----------|--------|-----------------|------------|
+  | 로그인   | POST   | /api/auth/login | login()    |
+
+  ==================== 백엔드 응답 구조 ====================
+  POST /api/auth/login 응답:
+  {
+    "success": true,
+    "data": {
+      "userResponse": {
+        "id": 1,
+        "email": "user@example.com",
+        "name": "홍길동",
+        "nickname": "홍길동",
+        "address": "서울시 강남구",
+        "phone": "010-1234-5678"
+      }
+    }
+  }
+  + Set-Cookie: accessToken=xxx; HttpOnly; Secure; SameSite=None
+  + Set-Cookie: refreshToken=xxx; HttpOnly; Secure; SameSite=None
+
+  ==================== Vue 파일 구조 ====================
+  1. <template>: HTML (화면 구조)
+  2. <script>: JavaScript (로직, 상태, 메서드)
+  3. <style>: CSS (스타일, scoped면 이 컴포넌트만 적용)
+-->
 <template>
   <!-- container: Bootstrap 컨테이너 (가운데 정렬, 반응형) -->
   <div class="container">
