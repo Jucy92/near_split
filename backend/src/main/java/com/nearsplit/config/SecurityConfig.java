@@ -71,7 +71,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(Arrays.asList("http://localhost:5173","http://localhost:5665")); // 프론트, K6(부하테스트 포트)
+        cors.setAllowedOrigins(Arrays.asList("http://localhost:5173","http://localhost:5665", "near-split.vercel.app")); // 프론트, K6(부하테스트 포트)
         cors.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE"));
         cors.setAllowedHeaders(Arrays.asList("*"));
         cors.setAllowCredentials(true); // 쿠키 허용
