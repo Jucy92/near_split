@@ -1,6 +1,56 @@
+<!--
+  파일: GroupDetailView.vue
+  설명: 소분 그룹 상세 페이지
+        - 그룹 정보 표시 (제목, 금액, 참여 현황 등)
+        - 참여자 관리 (호스트 전용: 승인/거절)
+        - 참여 신청/취소 (일반 사용자)
+
+  ==================== 데이터 흐름 ====================
+  1. mounted() → loadData() 호출
+  2. loadData()에서 2개 API 병렬 호출:
+     - getGroup(groupId)  → GET /api/split/{groupId}
+     - getMyProfile()     → GET /api/users/me
+  3. 응답 데이터 매핑:
+     - this.group = 그룹 정보 (SplitGroupResponse)
+     - this.participants = 그룹 내 참여자 목록 (group.participants)
+     - this.currentUser = 현재 로그인 사용자 (UserResponse)
+
+  ==================== API 목록 ====================
+  | 기능           | 메서드 | 엔드포인트                    | 호출 함수              |
+  |----------------|--------|------------------------------|------------------------|
+  | 그룹 상세 조회 | GET    | /api/split/{groupId}          | getGroup()             |
+  | 내 프로필 조회 | GET    | /api/users/me                 | getMyProfile()         |
+  | 참여 신청      | POST   | /api/split/{groupId}/join     | joinGroup()            |
+  | 참여 취소      | DELETE | /api/split/{groupId}/join     | cancelJoin()           |
+  | 참여자 승인    | POST   | /api/split/{groupId}/approve  | approveParticipant()   |
+  | 참여자 거절    | POST   | /api/split/{groupId}/reject   | rejectParticipant()    |
+  | 그룹 수정      | PATCH  | /api/split/{groupId}          | updateGroup()          |
+  | 그룹 삭제      | DELETE | /api/split/{groupId}          | deleteGroup()          |
+
+  ==================== 백엔드 응답 구조 ====================
+  GET /api/split/{groupId} 응답 (SplitGroupResponse):
+  {
+    "id": 1,
+    "hostUserId": 100,
+    "title": "코스트코 소분",
+    "totalPrice": 50000,
+    "maxParticipants": 5,
+    "currentParticipants": 2,
+    "groupState": "RECRUITING",
+    "participants": [
+      {
+        "id": 1,
+        "userId": 101,
+        "userNickname": "홍길동",    // TODO: 백엔드에서 User JOIN 후 제공 필요
+        "status": "PENDING",
+        "joinedAt": "2026-01-29T10:00:00"
+      }
+    ]
+  }
+-->
 <template>
   <div class="container py-4">
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더: 목록으로 돌아가기 버튼 + 페이지 제목 -->
     <div class="d-flex align-items-center mb-4">
       <router-link to="/groups" class="btn btn-outline-secondary me-3">&larr; 목록</router-link>
       <h3 class="mb-0">그룹 상세</h3>
@@ -130,35 +180,82 @@
         </div>
       </div>
 
-      <!-- 오른쪽: 참여자 목록 (호스트만) -->
+      <!--
+        ==================== 참여자 관리 섹션 (호스트 전용) ====================
+        표시 조건: isHost === true (현재 로그인 사용자가 그룹 방장일 때만)
+
+        데이터 출처:
+          - this.participants 배열 (loadData()에서 설정)
+          - GET /api/split/{groupId} 응답의 participants 필드
+
+        participants 배열 구조 (ParticipantResponse):
+          {
+            "id": 1,                    // Participant 테이블 PK
+            "userId": 101,              // 참여자의 User ID (User 테이블 FK)
+            "userNickname": "홍길동",   // TODO: 백엔드에서 User JOIN 필요
+            "status": "PENDING",        // PENDING | APPROVED | REJECTED
+            "joinedAt": "2026-01-29T10:00:00"
+          }
+
+        액션:
+          - 승인 버튼: handleApprove(userId) → POST /api/split/{groupId}/approve
+          - 거절 버튼: handleReject(userId) → POST /api/split/{groupId}/reject
+      -->
       <div class="col-12 col-lg-4" v-if="isHost">
         <div class="card shadow-sm">
           <div class="card-header bg-white">
             <h5 class="mb-0">참여자 관리</h5>
           </div>
           <div class="card-body">
+            <!-- 참여자가 없을 때 안내 메시지 -->
             <div v-if="participants.length === 0" class="text-muted text-center py-3">
               아직 참여자가 없습니다.
             </div>
+
+            <!-- 참여자 목록 렌더링 -->
             <ul v-else class="list-group list-group-flush">
+              <!--
+                v-for: participants 배열 순회
+                :key: participant.userId를 고유 키로 사용 (같은 유저가 중복 참여 불가)
+              -->
               <li
                 v-for="participant in participants"
                 :key="participant.userId"
                 class="list-group-item d-flex justify-content-between align-items-center"
               >
+                <!-- 왼쪽: 참여자 정보 -->
                 <div>
-                  <!-- 참여자 닉네임 표시 (백엔드에서 userNickname 제공 시) -->
+                  <!--
+                    참여자 닉네임 표시
+                    - participant.userNickname: 백엔드에서 User 테이블 JOIN 후 제공 (TODO)
+                    - 없으면 "사용자 #101" 형식으로 userId 표시 (임시)
+                  -->
                   <div class="fw-bold">{{ participant.userNickname || `사용자 #${participant.userId}` }}</div>
+                  <!--
+                    참여 신청 시간
+                    - participant.joinedAt: Participant 테이블의 createdAt
+                    - formatTime(): "1월 29일 10:00" 형식으로 변환
+                  -->
                   <small class="text-muted">
                     {{ formatTime(participant.joinedAt) }} 신청
                   </small>
                 </div>
+
+                <!-- 오른쪽: 상태 배지 또는 승인/거절 버튼 -->
                 <div>
-                  <!-- 상태에 따른 버튼 -->
+                  <!-- 이미 승인된 참여자: 초록 배지 -->
                   <span v-if="participant.status === 'APPROVED'" class="badge bg-success">승인됨</span>
+                  <!-- 거절된 참여자: 빨간 배지 -->
                   <span v-else-if="participant.status === 'REJECTED'" class="badge bg-danger">거절됨</span>
+                  <!-- 대기중(PENDING): 승인/거절 버튼 표시 -->
                   <div v-else class="btn-group btn-group-sm">
-                    <!-- userId를 전달하여 승인/거절 처리 -->
+                    <!--
+                      승인 버튼
+                      @click: handleApprove(participant.userId)
+                        → POST /api/split/{groupId}/approve
+                        → body: { participantUserId: userId }
+                        → 성공 시 loadData()로 목록 새로고침
+                    -->
                     <button
                       class="btn btn-outline-success"
                       @click="handleApprove(participant.userId)"
@@ -166,6 +263,13 @@
                     >
                       승인
                     </button>
+                    <!--
+                      거절 버튼
+                      @click: handleReject(participant.userId)
+                        → POST /api/split/{groupId}/reject
+                        → body: { participantUserId: userId }
+                        → 성공 시 loadData()로 목록 새로고침
+                    -->
                     <button
                       class="btn btn-outline-danger"
                       @click="handleReject(participant.userId)"
@@ -182,28 +286,52 @@
       </div>
     </div>
 
-    <!-- 수정 모달 -->
+    <!--
+      ==================== 그룹 수정 모달 (호스트 전용) ====================
+      표시 조건: showEditModal === true (수정 버튼 클릭 시)
+
+      API 호출:
+        - 저장 버튼 클릭 → handleUpdate()
+        - PATCH /api/split/{groupId}
+        - body: { title, totalPrice, maxParticipants, pickupLocation }
+
+      백엔드 제약 조건 (SplitGroupService.updateSplitGroup):
+        - 참여자가 있으면 제목(title) 변경 불가
+        - 참여자가 있으면 총 금액(totalPrice) 변경 불가
+        - 참여자가 있으면 최대 인원(maxParticipants) 변경 불가
+        - 픽업 장소(pickupLocation)는 언제든 변경 가능
+
+      editForm 데이터:
+        - showEditModal이 true가 될 때 watch에서 현재 group 데이터로 초기화
+        - v-model로 input과 양방향 바인딩
+    -->
     <div v-if="showEditModal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">그룹 수정</h5>
+            <!-- 닫기 버튼: showEditModal = false로 모달 숨김 -->
             <button type="button" class="btn-close" @click="showEditModal = false"></button>
           </div>
+          <!-- @submit.prevent: 폼 제출 시 페이지 새로고침 방지 + handleUpdate() 호출 -->
           <form @submit.prevent="handleUpdate">
             <div class="modal-body">
+              <!-- 제목 입력 (required: 필수 입력) -->
               <div class="mb-3">
                 <label class="form-label">제목</label>
                 <input type="text" class="form-control" v-model="editForm.title" required />
               </div>
+              <!-- 총 금액 입력 (v-model.number: 숫자 타입으로 변환) -->
               <div class="mb-3">
                 <label class="form-label">총 금액</label>
                 <input type="number" class="form-control" v-model.number="editForm.totalPrice" />
               </div>
+              <!-- 최대 참여자 수 입력 -->
               <div class="mb-3">
                 <label class="form-label">최대 참여자</label>
                 <input type="number" class="form-control" v-model.number="editForm.maxParticipants" />
               </div>
+              <!-- 픽업 장소 입력 -->
               <div class="mb-3">
                 <label class="form-label">픽업 장소</label>
                 <input type="text" class="form-control" v-model="editForm.pickupLocation" />
@@ -211,6 +339,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" @click="showEditModal = false">취소</button>
+              <!-- :disabled: API 호출 중 중복 클릭 방지 -->
               <button type="submit" class="btn btn-primary" :disabled="actionLoading">저장</button>
             </div>
           </form>

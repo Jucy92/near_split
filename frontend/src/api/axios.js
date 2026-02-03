@@ -7,7 +7,7 @@ import axios from 'axios'
 const apiClient = axios.create({
   // baseURL: 모든 API 요청의 기본 주소
   // 예: apiClient.get('/auth/login') → http://localhost:8080/api/auth/login
-  baseURL: 'http://localhost:8080/api',  // Spring Boot 백엔드 주소
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',  // Spring Boot 백엔드 주소
 
   // timeout: 요청 시간 제한 (10초)
   // 10초 안에 응답 없으면 에러 발생
