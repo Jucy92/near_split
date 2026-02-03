@@ -45,7 +45,7 @@ public class ChatService {
         ChatMessage message = ChatMessage.builder()
                 .groupId(request.getGroupId())
                 .senderId(senderId)
-                .senderName(sender.getName())
+                .senderName(sender.getNickname())
                 .content(request.getContent())
                 .type(request.getType())
                 .build();
