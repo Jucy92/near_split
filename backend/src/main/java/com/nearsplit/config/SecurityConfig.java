@@ -6,6 +6,7 @@ import com.nearsplit.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -53,6 +54,7 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/h2-console/**").permitAll()  // H2 Console 허용
                                 .requestMatchers("/api/auth/**").permitAll()    // 회원가입/로그인 허용
                                 .requestMatchers("/ws/**").permitAll()          // 웹 소켓 연결을 위한 허용
@@ -72,7 +74,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(Arrays.asList("http://localhost:5173","http://localhost:5665", "near-split.vercel.app")); // 프론트, K6(부하테스트 포트)
-        cors.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE"));
+        cors.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(Arrays.asList("*"));
         cors.setAllowCredentials(true); // 쿠키 허용
 
