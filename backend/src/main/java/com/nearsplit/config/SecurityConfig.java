@@ -74,7 +74,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(Arrays.asList("http://localhost:5173",
-                                             "https://near-split.vercel.app",    // 프론트
+                                             "https://near-split.vercel.app",   // 프론트
                                              "http://localhost:5665"            // K6(부하테스트 포트)
         ));
         cors.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
