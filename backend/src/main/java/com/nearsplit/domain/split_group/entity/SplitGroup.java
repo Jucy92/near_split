@@ -29,6 +29,9 @@ public class SplitGroup {
     @Column(name = "host_user_id", nullable = false)
     private Long hostUserId;
 
+    private Double latitude;        // 위도
+    private Double longitude;       // 경도
+
     //@OneToMany
     @JoinColumn(name = "product_id")
     private Long productId; // 이게 필요할까... 우리가 품목코드를 관리하느것도 아닌데.. 아니면 그냥 String으로 해서 파스타, 고구마 이런식으로 받거나..

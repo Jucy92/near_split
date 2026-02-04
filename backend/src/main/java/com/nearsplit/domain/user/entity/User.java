@@ -33,6 +33,8 @@ public class User {
 
     @Column(length = 20)
     private String phone;
+    private Double latitude;        // 위도
+    private Double longitude;       // 경도
 
     // 회원 수정 or 다른 곳에서 입력
     @Column(length = 500)
