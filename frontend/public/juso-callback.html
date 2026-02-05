@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+  파일: juso-callback.html
+  설명: juso.go.kr (도로명주소 API) 팝업 콜백 페이지
+        - juso.go.kr 팝업에서 주소 선택 시 이 페이지로 결과가 전달됨
+        - 결과를 받아서 부모 창(opener)의 jusoCallBack 함수 호출
+        - 호출 후 팝업 창 자동 닫힘
+
+  ==================== 동작 흐름 ====================
+  1. 사용자가 프로필 수정에서 "주소 검색" 버튼 클릭
+  2. juso.go.kr 팝업 열림
+  3. 사용자가 주소 검색 후 선택
+  4. juso.go.kr이 이 페이지(juso-callback.html)로 결과 전달
+  5. 이 페이지에서 opener.jusoCallBack() 호출
+  6. ProfileView.vue의 jusoCallBack 함수가 실행됨
+  7. editForm.address에 선택된 주소 설정
+  8. 팝업 창 닫힘
+
+  ==================== juso.go.kr 응답 필드 ====================
+  | 필드명        | 설명                        | 예시                           |
+  |---------------|-----------------------------|--------------------------------|
+  | roadFullAddr  | 도로명주소 전체             | 서울특별시 강남구 역삼로 123   |
+  | roadAddrPart1 | 도로명주소 (건물번호까지)   | 서울특별시 강남구 역삼로 123   |
+  | roadAddrPart2 | 참고항목 (동, 아파트명)     | (역삼동)                       |
+  | jibunAddr     | 지번주소                    | 서울특별시 강남구 역삼동 123-45|
+  | zipNo         | 우편번호                    | 06241                          |
+  | bdNm          | 건물명                      | 역삼타워                       |
+  | siNm          | 시도명                      | 서울특별시                     |
+  | sggNm         | 시군구명                    | 강남구                         |
+  | emdNm         | 읍면동명                    | 역삼동                         |
+-->
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>주소 검색 결과</title>
+</head>
+<body>
+<script>
+  /**
+   * juso.go.kr 팝업에서 전달된 주소 정보를 부모 창으로 전달
+   * - POST 방식으로 전달된 데이터는 서버에서 처리 필요
+   * - 여기서는 URL 파라미터로 받는 방식 사용 (GET 방식)
+   */
+
+  // URL에서 파라미터 추출하는 함수
+  function getUrlParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name) || '';
+  }
+
+  // 부모 창이 존재하고 jusoCallBack 함수가 있는지 확인
+  if (window.opener && window.opener.jusoCallBack) {
+    // juso.go.kr에서 전달된 주소 정보 추출
+    const roadFullAddr = getUrlParam('roadFullAddr');    // 도로명주소 전체
+    const roadAddrPart1 = getUrlParam('roadAddrPart1');  // 도로명주소 (건물번호까지)
+    const addrDetail = getUrlParam('addrDetail');        // 상세주소
+    const roadAddrPart2 = getUrlParam('roadAddrPart2');  // 참고항목
+    const engAddr = getUrlParam('engAddr');              // 영문주소
+    const jibunAddr = getUrlParam('jibunAddr');          // 지번주소
+    const zipNo = getUrlParam('zipNo');                  // 우편번호
+    const admCd = getUrlParam('admCd');                  // 행정구역코드
+    const rnMgtSn = getUrlParam('rnMgtSn');              // 도로명코드
+    const bdMgtSn = getUrlParam('bdMgtSn');              // 건물관리번호
+    const detBdNmList = getUrlParam('detBdNmList');      // 상세건물명
+    const bdNm = getUrlParam('bdNm');                    // 건물명
+    const bdKdcd = getUrlParam('bdKdcd');                // 건물종류코드
+    const siNm = getUrlParam('siNm');                    // 시도명
+    const sggNm = getUrlParam('sggNm');                  // 시군구명
+    const emdNm = getUrlParam('emdNm');                  // 읍면동명
+    const liNm = getUrlParam('liNm');                    // 리명
+    const rn = getUrlParam('rn');                        // 도로명
+    const udrtYn = getUrlParam('udrtYn');                // 지하여부
+    const buldMnnm = getUrlParam('buldMnnm');            // 건물본번
+    const buldSlno = getUrlParam('buldSlno');            // 건물부번
+    const mtYn = getUrlParam('mtYn');                    // 산여부
+    const lnbrMnnm = getUrlParam('lnbrMnnm');            // 지번본번
+    const lnbrSlno = getUrlParam('lnbrSlno');            // 지번부번
+    const emdNo = getUrlParam('emdNo');                  // 읍면동일련번호
+
+    // 부모 창의 jusoCallBack 함수 호출 (모든 파라미터 전달)
+    window.opener.jusoCallBack(
+      roadFullAddr, roadAddrPart1, addrDetail, roadAddrPart2, engAddr,
+      jibunAddr, zipNo, admCd, rnMgtSn, bdMgtSn, detBdNmList, bdNm,
+      bdKdcd, siNm, sggNm, emdNm, liNm, rn, udrtYn, buldMnnm, buldSlno,
+      mtYn, lnbrMnnm, lnbrSlno, emdNo
+    );
+  }
+
+  // 팝업 창 닫기
+  window.close();
+</script>
+</body>
+</html>
