@@ -172,28 +172,66 @@
                 />
               </div>
 
-              <!-- 주소 -->
+              <!-- 주소 검색 (백엔드 API 경유) -->
               <div class="mb-3">
-                <label for="address" class="form-label">주소</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="address"
-                  v-model="editForm.address"
-                  placeholder="서울시 강남구..."
-                />
+                <label for="addressKeyword" class="form-label">주소</label>
+
+                <!-- 검색어 입력 + 검색 버튼 -->
+                <div class="input-group mb-2">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="addressKeyword"
+                    v-model="addressKeyword"
+                    placeholder="주소 검색어 입력 (예: 역삼동, 테헤란로)"
+                    @keyup.enter="searchAddress"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary"
+                    @click="searchAddress"
+                    :disabled="addressSearching"
+                  >
+                    <span v-if="addressSearching" class="spinner-border spinner-border-sm"></span>
+                    <span v-else>검색</span>
+                  </button>
+                </div>
+
+                <!-- 검색 결과 목록 -->
+                <div v-if="addressResults.length > 0" class="list-group mb-2" style="max-height: 200px; overflow-y: auto;">
+                  <button
+                    v-for="(addr, index) in addressResults"
+                    :key="index"
+                    type="button"
+                    class="list-group-item list-group-item-action"
+                    @click="selectAddress(addr)"
+                  >
+                    <div class="fw-bold">{{ addr.roadAddr }}</div>
+                    <small class="text-muted">{{ addr.jibunAddr }}</small>
+                    <span v-if="addr.bdNm" class="badge bg-secondary ms-2">{{ addr.bdNm }}</span>
+                  </button>
+                </div>
+
+                <!-- 선택된 주소 표시 -->
+                <div v-if="editForm.address" class="alert alert-success py-2 mb-0">
+                  <small class="text-muted">선택된 주소:</small>
+                  <div class="fw-bold">{{ editForm.address }}</div>
+                </div>
+
+                <small class="text-muted">도로명주소 검색 (행정안전부 제공)</small>
               </div>
 
-              <!-- 지역 -->
+              <!-- 상세 위치 (거래 장소 설명용 - 사용자 직접 입력) -->
               <div class="mb-3">
-                <label for="location" class="form-label">지역</label>
+                <label for="location" class="form-label">상세 위치 (선택)</label>
                 <input
                   type="text"
                   class="form-control"
                   id="location"
                   v-model="editForm.location"
-                  placeholder="강남구"
+                  placeholder="예: 역삼역 2번출구 앞, GS25 편의점 앞"
                 />
+                <small class="text-muted">거래 시 만날 장소를 입력하세요</small>
               </div>
 
               <!-- 비밀번호 변경 (선택사항) -->
@@ -230,6 +268,7 @@
 
 <script>
 import { getMyProfile, updateMyProfile } from '../api/user'
+import { searchAddress as searchAddressApi } from '../api/address'
 
 export default {
   name: 'ProfileView',
@@ -249,7 +288,11 @@ export default {
         password: ''        // 새 비밀번호 (선택)
       },
       errorMessage: '',
-      successMessage: ''
+      successMessage: '',
+      // 주소 검색 관련 상태
+      addressKeyword: '',      // 주소 검색어
+      addressResults: [],      // 검색 결과 목록
+      addressSearching: false  // 검색 중 상태
     }
   },
 
@@ -285,12 +328,69 @@ export default {
       this.editMode = true
       this.errorMessage = ''
       this.successMessage = ''
+      // 주소 검색 상태 초기화
+      this.addressKeyword = ''
+      this.addressResults = []
     },
 
     // 수정 취소
     cancelEdit() {
       this.editMode = false
       this.errorMessage = ''
+      // 주소 검색 상태 초기화
+      this.addressKeyword = ''
+      this.addressResults = []
+    },
+
+    /**
+     * 주소 검색 (백엔드 API 호출)
+     * - 프론트 → 백엔드 → juso.go.kr (CORS 우회)
+     * - 검색 결과를 addressResults에 저장
+     */
+    async searchAddress() {
+      // 검색어 유효성 검사
+      if (!this.addressKeyword.trim()) {
+        alert('검색어를 입력해주세요.')
+        return
+      }
+
+      this.addressSearching = true
+      this.addressResults = []
+
+      try {
+        // 백엔드 API 호출 (GET /api/address/search?keyword=...)
+        const response = await searchAddressApi(this.addressKeyword.trim())
+        this.addressResults = response.data
+
+        // 검색 결과가 없으면 알림
+        if (this.addressResults.length === 0) {
+          alert('검색 결과가 없습니다. 다른 검색어를 입력해주세요.')
+        }
+      } catch (error) {
+        console.error('주소 검색 실패:', error)
+        alert('주소 검색에 실패했습니다. 다시 시도해주세요.')
+      } finally {
+        this.addressSearching = false
+      }
+    },
+
+    /**
+     * 검색 결과에서 주소 선택
+     * - 선택한 주소를 editForm.address에 저장
+     * - 건물명이 있으면 location에 자동 입력
+     */
+    selectAddress(addr) {
+      // 도로명주소를 address 필드에 저장
+      this.editForm.address = addr.roadAddr
+
+      // 건물명이 있고 location이 비어있으면 자동 입력
+      if (addr.bdNm && !this.editForm.location) {
+        this.editForm.location = addr.bdNm
+      }
+
+      // 검색 결과 목록 초기화
+      this.addressResults = []
+      this.addressKeyword = ''
     },
 
     // 프로필 수정 저장

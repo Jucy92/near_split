@@ -180,6 +180,21 @@
               >
                 💬 채팅방
               </button>
+
+              <!--
+                결제 버튼 (모집 완료 상태에서만 표시)
+                조건:
+                  - 그룹 상태가 FULL (모집 완료)
+                  - 승인된 참여자만 (방장은 제외 - 방장은 돈을 받는 쪽)
+                클릭 시 결제 페이지(/checkout/{groupId})를 팝업으로 열기
+              -->
+              <button
+                v-if="!isHost && myParticipantStatus === 'APPROVED' && group.groupState === 'FULL'"
+                class="btn btn-success"
+                @click="goToPayment"
+              >
+                💳 결제하기
+              </button>
             </div>
           </div>
         </div>
@@ -575,6 +590,25 @@ export default {
       window.open(
         `/chat/${this.group.id}`,
         `chat_${this.group.id}`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      )
+    },
+
+    /**
+     * 결제 페이지를 팝업으로 열기
+     * - 모집 완료(FULL) 상태에서만 호출됨
+     * - 채팅 팝업과 비슷한 크기로 열림
+     */
+    goToPayment() {
+      const width = 500
+      const height = 700
+      // 화면 중앙에 위치
+      const left = (window.screen.width - width) / 2
+      const top = (window.screen.height - height) / 2
+
+      window.open(
+        `/checkout/${this.group.id}`,
+        `payment_${this.group.id}`,
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
       )
     },

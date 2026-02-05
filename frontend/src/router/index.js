@@ -70,6 +70,27 @@ const routes = [
     name: 'ProductCreate',
     component: () => import('../views/ProductCreateView.vue'),
     meta: { requiresAuth: true }  // 로그인 필요
+  },
+  // ===========================
+  // 결제 관련 페이지
+  // ===========================
+  {
+    path: '/checkout/:groupId',  // URL: http://localhost:5173/checkout/123
+    name: 'Checkout',
+    component: () => import('../views/CheckoutView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
+  {
+    path: '/payment/success',    // URL: http://localhost:5173/payment/success
+    name: 'PaymentSuccess',
+    component: () => import('../views/PaymentSuccessView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
+  {
+    path: '/payment/fail',       // URL: http://localhost:5173/payment/fail
+    name: 'PaymentFail',
+    component: () => import('../views/PaymentFailView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
   }
 ]
 
