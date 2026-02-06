@@ -3,7 +3,7 @@
   설명: 로그인 후 첫 화면 (대시보드)
         - 사용자 환영 메시지 표시
         - 주요 기능으로 이동하는 메뉴 카드들
-        - 내 그룹 참여 현황 요약
+        - 참여 그룹 현황 요약 (→ /groups?tab=my로 이동)
         - 최근 모집 중인 그룹 목록
 
   ==================== 페이지 접근 흐름 ====================
@@ -36,7 +36,7 @@
   ├── 메뉴 카드들
   │   ├── 소분 그룹 카드 (→ /groups, /groups/new)
   │   ├── 상품 관리 카드 (→ /products, /products/new)
-  │   ├── 내 그룹 카드 (myGroupCount 표시)
+  │   ├── 참여 그룹 카드 (→ /groups?tab=my, myGroupCount 표시)
   │   └── 프로필 카드 (→ /profile)
   └── 최근 그룹 목록 (recentGroups 배열 v-for)
 -->
@@ -97,18 +97,22 @@
         </div>
       </div>
 
-      <!-- 내 그룹 요약 -->
+      <!--
+        참여 그룹 요약 카드
+        - "내 그룹" → "참여 그룹"으로 변경
+        - 클릭 시 /groups?tab=my로 이동 → GroupListView에서 탭 없이 참여 그룹만 표시
+      -->
       <div class="col-12 col-md-6">
         <div class="card h-100 shadow-sm">
           <div class="card-body">
             <h5 class="card-title">
               <i class="bi bi-bookmark-star text-warning me-2"></i>
-              내 그룹
+              참여 그룹
             </h5>
             <p class="card-text text-muted">내가 참여 중인 그룹을 확인하세요.</p>
             <div class="d-flex justify-content-between align-items-center">
               <span class="badge bg-warning text-dark fs-6">{{ myGroupCount }}개 참여 중</span>
-              <router-link to="/groups" class="btn btn-outline-warning btn-sm">보러가기</router-link>
+              <router-link to="/groups?tab=my" class="btn btn-outline-warning btn-sm">보러가기</router-link>
             </div>
           </div>
         </div>

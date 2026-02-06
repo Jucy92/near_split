@@ -59,7 +59,7 @@ import { getGroup } from '../api/group'
 export default {
   name: 'CheckoutView',
 
-  data() {
+  data() {    // 데이터 저장
     return {
       // 그룹(주문) 정보
       groupInfo: null,
@@ -79,7 +79,7 @@ export default {
   },
 
   // computed: 계산된 속성 (totalPrice / (maxParticipants + 1))
-  computed: {
+  computed: {   // 데이터 계산
     /**
      * 1인당 결제 금액 계산
      * - GroupDetailView와 동일한 계산 방식
@@ -103,7 +103,7 @@ export default {
     await this.initTossPayments()
   },
 
-  methods: {
+  methods: {    // 데이터 로딩
     /**
      * 그룹(주문) 정보 조회
      * - URL 파라미터에서 groupId 추출
@@ -116,7 +116,7 @@ export default {
 
         // 백엔드 API 호출
         const response = await getGroup(groupId)
-        this.groupInfo = response.data
+        this.groupInfo = response.data.data
 
         // 디버깅: 그룹 정보 확인
         console.log('그룹 정보 로드:', this.groupInfo)

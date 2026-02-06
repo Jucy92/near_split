@@ -63,8 +63,8 @@
 </template>
 
 <script>
-// 결제 승인 API
-import { confirmPayment } from '@/api/payment'
+// 결제 승인 API (상대 경로 사용 - 이 프로젝트는 @ alias 미설정)
+import { confirmPayment } from '../api/payment'
 
 export default {
   name: 'PaymentSuccessView',

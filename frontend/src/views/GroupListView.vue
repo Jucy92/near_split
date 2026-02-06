@@ -2,21 +2,24 @@
   파일: GroupListView.vue
   설명: 소분 그룹 목록 페이지
         - 전체 그룹 목록 (페이징)
-        - 내 그룹 목록 (참여 중인 그룹)
+        - 참여 그룹 목록 (내가 참여 중인 그룹)
         - 탭으로 전환 가능
+        - HomeView '참여 그룹'에서 진입 시 탭 없이 참여 그룹만 표시 (myOnly 모드)
 
   ==================== 페이지 접근 흐름 ====================
-  1. HomeView에서 "그룹 목록" 또는 "보러가기" 클릭
+  1-A. HomeView "그룹 목록" 클릭 → /groups → 전체 그룹/참여 그룹 탭 표시
+  1-B. HomeView "참여 그룹" 클릭 → /groups?tab=my → 탭 숨김, 참여 그룹만 표시
   2. router가 /groups로 이동
   3. GroupListView 렌더링
-  4. mounted()에서 loadAllGroups() + loadMyGroups() 호출
-  5. 기본 탭: "전체 그룹" (currentTab = 'all')
-  6. 그룹 카드 클릭 → goToDetail(groupId) → /groups/{id}로 이동
+  4. mounted()에서 쿼리 파라미터 확인:
+     - tab=my: myOnly=true, 참여 그룹만 로드
+     - 없음: 전체 그룹 + 참여 그룹 로드
+  5. 그룹 카드 클릭 → goToDetail(groupId) → /groups/{id}로 이동
 
   ==================== 데이터 흐름 ====================
-  mounted() → 2개 API 순차 호출:
-    - loadAllGroups() → GET /api/split?page=0&size=9 → this.groups
-    - loadMyGroups()  → GET /api/split/my            → this.myGroups
+  mounted() → 쿼리 파라미터에 따라 분기:
+    - tab=my (myOnly 모드): loadMyGroups()만 호출 → this.myGroups
+    - 그 외 (일반 모드): loadAllGroups() + loadMyGroups() 호출
 
   탭 전환 시 (watch: currentTab):
     - 'all'  → loadAllGroups()
@@ -26,7 +29,7 @@
   | 기능             | 메서드 | 엔드포인트              | 호출 함수      |
   |------------------|--------|-------------------------|----------------|
   | 전체 그룹 목록   | GET    | /api/split?page=N&size=M| getGroups()    |
-  | 내 그룹 목록     | GET    | /api/split/my           | getMyGroups()  |
+  | 참여 그룹 목록   | GET    | /api/split/my           | getMyGroups()  |
 
   ==================== 백엔드 응답 구조 차이 ====================
   1. 전체 그룹 (GET /api/split) - SplitGroupResponse + Page
@@ -40,7 +43,7 @@
      - id 필드 사용
      - groupState 필드 사용
 
-  2. 내 그룹 (GET /api/split/my) - SplitGroupSummaryResponse[]
+  2. 참여 그룹 (GET /api/split/my) - SplitGroupSummaryResponse[]
      [
        { "groupId": 1, "status": "RECRUITING", "isHost": true, ... }
      ]
@@ -51,11 +54,11 @@
   ==================== 컴포넌트 구조 ====================
   GroupListView
   ├── 상단 헤더 (홈 링크 + 그룹 생성 버튼)
-  ├── 탭 (전체 그룹 / 내 그룹)
+  ├── 탭 (전체 그룹 / 참여 그룹) - myOnly 모드에서는 숨김
   ├── 전체 그룹 탭
   │   ├── 그룹 카드 그리드 (groups 배열 v-for)
   │   └── 페이지네이션
-  └── 내 그룹 탭
+  └── 참여 그룹 탭 (또는 myOnly 모드)
       └── 리스트 그룹 (myGroups 배열 v-for)
 -->
 <template>
@@ -69,8 +72,12 @@
       <router-link to="/groups/new" class="btn btn-primary">+ 그룹 생성</router-link>
     </div>
 
-    <!-- 탭 (전체 / 내 그룹) -->
-    <ul class="nav nav-tabs mb-4">
+    <!--
+      탭 (전체 / 참여 그룹)
+      - myOnly 모드일 때는 탭 자체를 숨김 (HomeView '내 그룹'에서 진입 시)
+      - 일반 모드일 때는 전체 그룹 / 참여 그룹 탭 표시
+    -->
+    <ul class="nav nav-tabs mb-4" v-if="!myOnly">
       <li class="nav-item">
         <button
           class="nav-link"
@@ -86,7 +93,7 @@
           :class="{ active: currentTab === 'my' }"
           @click="currentTab = 'my'"
         >
-          내 그룹
+          참여 그룹
         </button>
       </li>
     </ul>
@@ -153,14 +160,14 @@
         </nav>
       </div>
 
-      <!-- 내 그룹 -->
+      <!-- 참여 그룹 (myOnly 모드 또는 '참여 그룹' 탭 선택 시) -->
       <div v-else>
         <div v-if="myGroups.length === 0" class="alert alert-info">
           참여 중인 그룹이 없습니다.
         </div>
         <div v-else class="list-group">
           <!--
-            내 그룹 목록: SplitGroupSummaryResponse 사용
+            참여 그룹 목록: SplitGroupSummaryResponse 사용
             - groupId: 그룹 ID (id가 아님!)
             - status: 상태 (groupState가 아님!)
             - pickupLocation: 없음 (SummaryResponse에 없음)
@@ -212,13 +219,16 @@ export default {
 
   data() {
     return {
+      // currentTab: 현재 선택된 탭 ('all' 또는 'my')
       currentTab: 'all',
+      // myOnly: HomeView '내 그룹'에서 진입 시 true → 탭 숨기고 참여 그룹만 표시
+      myOnly: false,
       loading: false,
       // 전체 그룹
       groups: [],
       currentPage: 0,
       totalPages: 0,
-      // 내 그룹
+      // 참여 그룹 (내 그룹)
       myGroups: []
     }
   },
@@ -234,8 +244,21 @@ export default {
   },
 
   async mounted() {
-    await this.loadAllGroups()
-    await this.loadMyGroups()
+    // URL 쿼리 파라미터 확인: /groups?tab=my 형태로 접근 시
+    // HomeView '내 그룹' 카드에서 진입하면 tab=my가 붙음
+    const tabParam = this.$route.query.tab
+
+    if (tabParam === 'my') {
+      // myOnly 모드: 탭 숨기고 참여 그룹만 표시
+      this.myOnly = true
+      this.currentTab = 'my'
+      await this.loadMyGroups()
+    } else {
+      // 일반 모드: 전체 그룹 + 참여 그룹 탭 표시
+      this.myOnly = false
+      await this.loadAllGroups()
+      await this.loadMyGroups()
+    }
   },
 
   methods: {
