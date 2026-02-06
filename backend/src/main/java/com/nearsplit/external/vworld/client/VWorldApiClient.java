@@ -2,7 +2,9 @@ package com.nearsplit.external.vworld.client;
 
 import com.nearsplit.external.vworld.dto.VWorldGeocodingResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -18,6 +20,7 @@ import org.springframework.web.client.RestClient;
  * 2026-02-04(수)                user            최초 생성
  */
 @Component
+@Slf4j
 public class VWorldApiClient {
     private final RestClient restClient;
     @Value(value = "${vworld.api.key}")
@@ -41,7 +44,13 @@ public class VWorldApiClient {
                         .queryParam("type", "road")
                         .queryParam("key", apiKey)
                         .build())
+                .header("Referer", "https://nearsplit-production.up.railway.app")
                 .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> {
+                    String body = new String(response.getBody().readAllBytes());
+                    log.error("VWorld API 에러: status={}, body={}", response.getStatusCode(), body);
+                    throw new RuntimeException("VWorld API 호출 실패: " + body);
+                })
                 .body(VWorldGeocodingResponse.class);
     }
 }
