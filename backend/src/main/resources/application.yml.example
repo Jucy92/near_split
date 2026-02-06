@@ -1,0 +1,89 @@
+# ============================================
+# NearSplit Backend 설정 파일 (템플릿)
+# ============================================
+# 이 파일을 복사하여 application.yml로 저장하세요
+# cp application.yml.example application.yml
+# ============================================
+
+spring:
+  application:
+    name: nearsplit
+
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:h2:tcp://localhost/~/near_split
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        user_sql_comments: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: nearsplit-consumer
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+jwt:
+  # ⚠️ 운영 환경에서는 반드시 변경하세요!
+  secret: nearsplit-secret-key-change-this-in-production-must-be-at-least-256-bits
+  expiration: 1800000 # 30분
+
+cookie:
+  secure: false
+  same-site: Lax
+
+logging:
+  level:
+    com.nearsplit: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-stacktrace: on_param
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# ============================================
+# 외부 API 키 설정
+# ============================================
+# 아래 값들을 실제 발급받은 키로 변경하세요
+
+vworld:
+  api:
+    # VWorld API 키 발급: https://www.vworld.kr
+    key: ${VWORLD_API_KEY:여기에_VWORLD_API_키_입력}
+    base-url: https://api.vworld.kr/req/address

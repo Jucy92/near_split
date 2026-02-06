@@ -23,7 +23,7 @@ public class VWorldApiClient {
     @Value(value = "${vworld.api.key}")
     private String apiKey;
 
-    public VWorldApiClient(@Value("$vworld.api.base-url") String baseUrl) {
+    public VWorldApiClient(@Value("${vworld.api.base-url}") String baseUrl) {
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .build();
