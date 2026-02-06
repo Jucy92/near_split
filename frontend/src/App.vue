@@ -164,8 +164,19 @@ export default {
     /**
      * 알림용 WebSocket 연결
      * /topic/notification/{userId} 구독
+     *
+     * 주의: 팝업 창(결제, 채팅 등)에서는 연결하지 않음
+     *       - 불필요한 서버 리소스 낭비 방지
+     *       - 메인 창에서만 알림 수신하면 충분
      */
     connectNotificationWebSocket() {
+      // 팝업 창에서는 WebSocket 연결 생략
+      // window.opener가 존재하면 이 창은 다른 창에서 열린 팝업
+      if (window.opener) {
+        console.log('팝업 창에서는 알림 WebSocket 연결 생략')
+        return
+      }
+
       // 사용자 정보 없으면 연결 불가
       if (!this.currentUser?.id) {
         console.warn('WebSocket 연결 실패: 사용자 정보 없음')
