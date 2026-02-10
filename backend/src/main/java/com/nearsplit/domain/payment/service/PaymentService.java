@@ -4,7 +4,10 @@ import com.nearsplit.domain.payment.dto.PaymentConfirmRequest;
 import com.nearsplit.domain.payment.dto.PaymentResponse;
 import com.nearsplit.domain.payment.entity.Payment;
 import com.nearsplit.domain.payment.repository.PaymentRepository;
+import com.nearsplit.domain.split_group.entity.Participant;
+import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
+import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +52,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final SplitGroupRepository splitGroupRepository;
+    private final ParticipantRepository participantRepository;
 
     // 토스페이먼츠 API 클라이언트
     private final TossPaymentClient tossPaymentClient;
@@ -86,15 +91,22 @@ public class PaymentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        // 4. 그룹 조회 (있으면)
-        SplitGroup group = null;
-        if (request.getGroupId() != null) {
-            group = splitGroupRepository.findById(request.getGroupId())
-                    .orElse(null);
+        // 4. 그룹 조회 및 참여자 조회 (값 변경 처리)
+        SplitGroup group = splitGroupRepository.findById(request.getGroupId())
+                .orElseThrow(() -> new RuntimeException("그룹 정보를 찾을 수 없습니다."));
+
+        Participant participant = participantRepository.findBySplitGroupIdAndUserId(group.getId(), userId)
+                .orElseThrow(() -> new RuntimeException("일치하는 참여자 정보가 없습니다"));
+
+        if (participant.getStatus() != ParticipantStatus.APPROVED) {    // 프론트를 믿지 말자...
+            throw  new RuntimeException("참여자가 승인 상태가 아닙니다");
         }
+        participant.setStatus(ParticipantStatus.PAID);
+
+
 
         // 5. Payment 엔티티 생성 및 저장
-        Payment payment = Payment.createFromTossResponse(tossResponse, user, group);
+        Payment payment = Payment.createFromTossResponse(tossResponse, user, participant.getSplitGroup());
         paymentRepository.save(payment);
 
         log.info("결제 승인 성공: paymentKey={}, status={}",
@@ -138,7 +150,19 @@ public class PaymentService {
         tossPaymentClient.cancelPayment(paymentKey, cancelReason);
 
         // 4. DB 상태 업데이트
-        payment.cancel();
+        payment.cancel();   // payment 상태 값 변경 (DONE -> CANCELED)
+
+        if (payment.getGroup() == null) {
+            throw new RuntimeException("결제 정보의 그룹 정보가 비어있습니다. 확인 바랍니다.");
+        }
+
+        Participant participant = participantRepository.findBySplitGroupIdAndUserId(payment.getGroup().getId(), payment.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("참여자 정보를 찾을 수 없습니다."));
+
+        if (participant.getStatus() != ParticipantStatus.PAID) {
+            throw new RuntimeException("결제된 상태에서만 취소할 수 있습니다.");
+        }
+        participant.setStatus(ParticipantStatus.APPROVED);
 
         log.info("결제 취소 성공: paymentKey={}", paymentKey);
 
