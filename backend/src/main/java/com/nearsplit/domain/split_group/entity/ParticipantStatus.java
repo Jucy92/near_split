@@ -17,6 +17,5 @@ public enum ParticipantStatus {
  APPROVED,  // 승인
  REJECTED,  // 거절
  PAID,      // 결제
- REFUNDED,  // 환불
  COMPLETED  // 완료
 }

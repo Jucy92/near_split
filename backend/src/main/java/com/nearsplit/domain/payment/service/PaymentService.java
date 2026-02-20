@@ -69,15 +69,31 @@ public class PaymentService {
      *   2. TossPaymentClient로 토스 API 결제 승인 호출
      *   3. 성공 시 Payment 엔티티 생성 → DB 저장
      *   4. PaymentResponse 반환
+     *   ==> 외부 API 호출 전 후로 오류 발생 할 수 있기 때문에,
+     *      *   검증 -> API -> DB 로 전반적인 흐름 수정
      */
     @Transactional
     public PaymentResponse confirmPayment(PaymentConfirmRequest request, Long userId) {
         log.info("결제 승인 요청: paymentKey={}, orderId={}, amount={}",
                 request.getPaymentKey(), request.getOrderId(), request.getAmount());
 
-        // 1. 중복 결제 확인
+        // 1. 데이터 검증
+        // 1-1. 중복 결제 확인
         if (paymentRepository.existsByPaymentKey(request.getPaymentKey())) {
             throw new RuntimeException("이미 처리된 결제입니다.");
+        }
+        // 1-2. 사용자 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        // 1-3. 그룹 조회 및 참여자 조회
+        SplitGroup group = splitGroupRepository.findById(request.getGroupId())
+                .orElseThrow(() -> new RuntimeException("그룹 정보를 찾을 수 없습니다."));
+        Participant participant = participantRepository.findBySplitGroupIdAndUserId(group.getId(), userId)
+                .orElseThrow(() -> new RuntimeException("일치하는 참여자 정보가 없습니다"));
+
+        if (participant.getStatus() != ParticipantStatus.APPROVED) {    // 프론트를 믿지 말자...
+            throw  new RuntimeException("참여자가 승인 상태가 아닙니다");
         }
 
         // 2. TossPaymentClient로 결제 승인 API 호출
@@ -87,25 +103,9 @@ public class PaymentService {
                 request.getAmount()
         );
 
-        // 3. 사용자 조회
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-
-        // 4. 그룹 조회 및 참여자 조회 (값 변경 처리)
-        SplitGroup group = splitGroupRepository.findById(request.getGroupId())
-                .orElseThrow(() -> new RuntimeException("그룹 정보를 찾을 수 없습니다."));
-
-        Participant participant = participantRepository.findBySplitGroupIdAndUserId(group.getId(), userId)
-                .orElseThrow(() -> new RuntimeException("일치하는 참여자 정보가 없습니다"));
-
-        if (participant.getStatus() != ParticipantStatus.APPROVED) {    // 프론트를 믿지 말자...
-            throw  new RuntimeException("참여자가 승인 상태가 아닙니다");
-        }
+        // 3. 데이터 처리 및 Payment 엔티티 생성,저장
         participant.setStatus(ParticipantStatus.PAID);
 
-
-
-        // 5. Payment 엔티티 생성 및 저장
         Payment payment = Payment.createFromTossResponse(tossResponse, user, participant.getSplitGroup());
         paymentRepository.save(payment);
 
@@ -137,21 +137,16 @@ public class PaymentService {
     public PaymentResponse cancelPayment(String paymentKey, String cancelReason, Long userId) {
         log.info("결제 취소 요청: paymentKey={}, reason={}", paymentKey, cancelReason);
 
-        // 1. 결제 정보 조회
+        // 1. 데이터 검증
+        // 1-1. 결제 정보 조회
         Payment payment = paymentRepository.findByPaymentKey(paymentKey)
                 .orElseThrow(() -> new RuntimeException("결제 정보를 찾을 수 없습니다."));
 
-        // 2. 권한 확인 (본인만 취소 가능)
+        // 1-2. 권한 확인 (본인만 취소 가능)
         if (!payment.getUser().getId().equals(userId)) {
             throw new RuntimeException("결제 취소 권한이 없습니다.");
         }
-
-        // 3. TossPaymentClient로 결제 취소 API 호출
-        tossPaymentClient.cancelPayment(paymentKey, cancelReason);
-
-        // 4. DB 상태 업데이트
-        payment.cancel();   // payment 상태 값 변경 (DONE -> CANCELED)
-
+        // 1-3. 그룹 조회 및 참여자 조회
         if (payment.getGroup() == null) {
             throw new RuntimeException("결제 정보의 그룹 정보가 비어있습니다. 확인 바랍니다.");
         }
@@ -162,6 +157,13 @@ public class PaymentService {
         if (participant.getStatus() != ParticipantStatus.PAID) {
             throw new RuntimeException("결제된 상태에서만 취소할 수 있습니다.");
         }
+
+        // 2. TossPaymentClient로 결제 취소 API 호출
+        tossPaymentClient.cancelPayment(paymentKey, cancelReason);
+
+        // 3. DB 상태 업데이트
+        payment.cancel();   // payment 상태 값 변경 (DONE -> CANCELED)
+
         participant.setStatus(ParticipantStatus.APPROVED);
 
         log.info("결제 취소 성공: paymentKey={}", paymentKey);
