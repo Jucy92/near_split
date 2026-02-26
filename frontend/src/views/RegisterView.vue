@@ -45,14 +45,12 @@
             <h2 class="text-center mb-4">NearSplit</h2>
             <h5 class="text-center text-muted mb-4">회원가입</h5>
 
-            <!-- 에러 메시지 -->
-            <div v-if="errorMessage" class="alert alert-danger" role="alert">
-              {{ errorMessage }}
-            </div>
-
-            <!-- 성공 메시지 -->
-            <div v-if="successMessage" class="alert alert-success" role="alert">
-              {{ successMessage }}
+            <!-- 에러 메시지 영역 -->
+            <div v-if="errorMessages.length > 0" class="alert alert-danger" role="alert">
+              <ul v-if="errorMessages.length > 1" class="mb-0 ps-3">
+                <li v-for="msg in errorMessages" :key="msg">{{ msg }}</li>
+              </ul>
+              <span v-else>{{ errorMessages[0] }}</span>
             </div>
 
             <!-- 회원가입 폼 -->
@@ -133,7 +131,14 @@
 </template>
 
 <script>
-import { register } from '../api/auth'
+import { register, login } from '../api/auth'
+import { parseError } from '../utils/errorParser'
+
+const FIELD_LABELS = {
+  name: '이름',
+  email: '이메일',
+  password: '비밀번호'
+}
 
 export default {
   name: 'RegisterView',
@@ -146,19 +151,17 @@ export default {
         passwordConfirm: ''
       },
       loading: false,
-      errorMessage: '',
-      successMessage: ''
+      errorMessages: []
     }
   },
   methods: {
     async handleRegister() {
       this.loading = true
-      this.errorMessage = ''
-      this.successMessage = ''
+      this.errorMessages = []
 
       // 비밀번호 확인
       if (this.registerForm.password !== this.registerForm.passwordConfirm) {
-        this.errorMessage = '비밀번호가 일치하지 않습니다.'
+        this.errorMessages = ['비밀번호가 일치하지 않습니다.']
         this.loading = false
         return
       }
@@ -168,21 +171,15 @@ export default {
         const { passwordConfirm, ...data } = this.registerForm
         await register(data)
 
-        // 회원가입 성공
-        this.successMessage = '회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.'
+        // 회원가입 성공 → 바로 로그인 처리 (이메일/비밀번호 재사용)
+        await login({ email: data.email, password: data.password })
+        localStorage.setItem('isLoggedIn', 'true')
 
-        setTimeout(() => {
-          this.$router.push('/login')
-        }, 2000)
+        // 로그인 성공 후 홈으로 이동
+        this.$router.push('/home')
       } catch (error) {
-        // 회원가입 실패
         console.error('회원가입 실패:', error)
-
-        if (error.response && error.response.data) {
-          this.errorMessage = error.response.data.message || '회원가입에 실패했습니다.'
-        } else {
-          this.errorMessage = '네트워크 오류가 발생했습니다.'
-        }
+        this.errorMessages = parseError(error, FIELD_LABELS, '네트워크 오류가 발생했습니다.')
       } finally {
         this.loading = false
       }

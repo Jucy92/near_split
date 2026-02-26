@@ -167,6 +167,11 @@
               </router-link>
             </li>
             <li>
+              <router-link to="/payments" class="dropdown-item">
+                <i class="bi bi-credit-card me-2"></i>결제 내역
+              </router-link>
+            </li>
+            <li>
               <router-link to="/groups" class="dropdown-item">
                 <i class="bi bi-collection me-2"></i>그룹 목록
               </router-link>

@@ -35,6 +35,14 @@ const routes = [
     meta: { requiresAuth: true }  // 로그인 필요한 페이지
   },
   {
+    path: '/groups/new',    // URL: http://localhost:5173/groups/new
+                            // ⚠️ 반드시 /groups/:id 보다 먼저 정의해야 함
+                            // 나중에 정의하면 /groups/:id가 "new"를 id로 가로채버림
+    name: 'GroupCreate',
+    component: () => import('../views/GroupCreateView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
+  {
     path: '/groups/:id',    // URL: http://localhost:5173/groups/123
                             // :id는 동적 파라미터 (123, 456 등 다양한 값 가능)
     name: 'GroupDetail',
@@ -74,6 +82,12 @@ const routes = [
   // ===========================
   // 결제 관련 페이지
   // ===========================
+  {
+    path: '/payments',           // URL: http://localhost:5173/payments
+    name: 'PaymentHistory',
+    component: () => import('../views/PaymentHistoryView.vue'),
+    meta: { requiresAuth: true }  // 로그인 필요
+  },
   {
     path: '/checkout/:groupId',  // URL: http://localhost:5173/checkout/123
     name: 'Checkout',

@@ -115,14 +115,24 @@
             class="card-body flex-grow-1 overflow-auto"
             style="background: #f8f9fa;"
           >
+            <!--
+              [권한 체크] 접근 권한 없을 때 표시하는 에러 화면
+              hasPermission이 false면 (= loadInitialData에서 403 받은 경우)
+              메시지 목록 대신 이 블록을 렌더링
+            -->
+            <div v-if="!hasPermission" class="text-center py-5">
+              <p class="text-danger fs-5">{{ permissionError }}</p>
+              <router-link to="/groups" class="btn btn-outline-secondary mt-2">그룹 목록으로</router-link>
+            </div>
+
             <!-- 로딩 스피너: loading이 true일 때만 표시 -->
-            <div v-if="loading" class="text-center py-5">
+            <div v-else-if="loading" class="text-center py-5">
               <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">로딩중...</span>
               </div>
             </div>
 
-            <!-- 메시지 목록: loading이 false일 때 표시 -->
+            <!-- 메시지 목록: 권한 있고 로딩 완료됐을 때 표시 -->
             <div v-else>
               <!-- 메시지가 없을 때 안내 문구 -->
               <div v-if="messages.length === 0" class="text-center text-muted py-5">
@@ -256,7 +266,23 @@ export default {
       connected: false,    // WebSocket 연결 상태
       stompClient: null,   // STOMP 클라이언트 인스턴스
       currentUser: null,   // 현재 로그인한 사용자 정보
-      groupTitle: ''       // 그룹 타이틀 (헤더 우측 표시용)
+      groupTitle: '',      // 그룹 타이틀 (헤더 우측 표시용)
+
+      // -------------------------------------------------------
+      // [권한 체크] 채팅방 접근 권한 여부
+      //
+      // 왜 필요한가?
+      // HTTP REST(getRecentMessages)와 WebSocket(connectWebSocket)은
+      // 완전히 독립적인 연결이다.
+      // REST에서 FORBIDDEN이 발생해도 WebSocket 연결은 막히지 않아서,
+      // 권한 없는 사용자가 실시간 메시지를 엿볼 수 있는 문제가 생겼다.
+      //
+      // 해결 방법:
+      // loadInitialData()에서 403 에러가 오면 이 값을 false로 바꾸고,
+      // mounted()에서 hasPermission이 false면 connectWebSocket()을 아예 호출하지 않는다.
+      // -------------------------------------------------------
+      hasPermission: true,   // true: 접근 허용 / false: 접근 차단 (403 응답 시 false로 변경됨)
+      permissionError: ''    // 권한 없을 때 화면에 표시할 에러 메시지
     }
   },
 
@@ -276,8 +302,19 @@ export default {
   async mounted() {
     // 1. 초기 데이터 로드 (이전 메시지, 사용자 정보)
     await this.loadInitialData()
+
     // 2. WebSocket 연결
-    this.connectWebSocket()
+    // -------------------------------------------------------
+    // [권한 체크] hasPermission이 true일 때만 WebSocket 연결 시작
+    //
+    // 왜 조건을 거는가?
+    // loadInitialData()에서 403(권한 없음) 에러가 오면 hasPermission이 false가 된다.
+    // 조건 없이 항상 connectWebSocket()을 호출하면,
+    // REST는 막혔지만 WebSocket은 뚫려서 실시간 메시지를 엿볼 수 있는 문제가 생긴다.
+    // -------------------------------------------------------
+    if (this.hasPermission) {
+      this.connectWebSocket()
+    }
   },
 
   // beforeUnmount: 컴포넌트가 DOM에서 제거되기 직전 실행
@@ -330,7 +367,23 @@ export default {
         // 메시지 로드 후 스크롤을 맨 아래로 이동
         this.$nextTick(() => this.scrollToBottom())
       } catch (error) {
-        console.error('초기 데이터 로드 실패:', error)
+        // -------------------------------------------------------
+        // [권한 체크] 403 응답이면 hasPermission을 false로 설정
+        //
+        // error.response.status: HTTP 응답 상태 코드
+        //   403 = FORBIDDEN → 이 채팅방에 접근 권한 없음 (참여자도 방장도 아님)
+        //   그 외 에러 (401, 500 등)는 별도 메시지로 처리
+        //
+        // hasPermission이 false가 되면:
+        //   - mounted()에서 connectWebSocket() 호출을 건너뜀 → 실시간 수신 차단
+        //   - 템플릿에서 permissionError 메시지를 화면에 표시
+        // -------------------------------------------------------
+        if (error.response?.status === 403) {
+          this.hasPermission = false
+          this.permissionError = '이 채팅방에 접근 권한이 없습니다.'
+        } else {
+          console.error('초기 데이터 로드 실패:', error)
+        }
       } finally {
         this.loading = false  // 로딩 종료 (성공/실패 무관)
       }

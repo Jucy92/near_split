@@ -4,6 +4,7 @@
         - 그룹 정보 입력 폼 (제목, 금액, 인원, 장소, 마감일)
         - 1인당 예상 금액 실시간 계산
         - 그룹 생성 후 상세 페이지로 이동
+        - 에러 처리: Validation 필드별 에러 + BusinessException 메시지 표시
 
   ==================== 페이지 접근 흐름 ====================
   1. GroupListView 또는 HomeView에서 "그룹 생성" 버튼 클릭
@@ -42,6 +43,23 @@
     ...
   }
 
+  ==================== 에러 응답 구조 ====================
+  [1] Validation 에러 (@Valid 실패):
+  {
+    "code": "C001",
+    "message": "잘못된 입력입니다",
+    "errors": {                              ← 필드별 상세 에러 맵
+      "title": "must not be blank",
+      "maxParticipants": "must be greater than or equal to 2"
+    }
+  }
+
+  [2] BusinessException (G002 등):
+  {
+    "code": "G002",
+    "message": "그룹이 가득 찼습니다"       ← errors 없이 message만
+  }
+
   ==================== 1인당 금액 계산 ====================
   - computed: pricePerPerson
   - 공식: Math.ceil(totalPrice / maxParticipants)
@@ -60,8 +78,15 @@
       <div class="col-12 col-md-8 col-lg-6">
         <div class="card shadow">
           <div class="card-body p-4">
-            <!-- 에러 메시지 -->
-            <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+            <!-- 에러 메시지 영역 -->
+            <!-- errorMessages 배열에 항목이 있을 때만 표시 -->
+            <div v-if="errorMessages.length > 0" class="alert alert-danger">
+              <!-- 에러가 여러 개면 목록으로, 하나면 단순 텍스트로 표시 -->
+              <ul v-if="errorMessages.length > 1" class="mb-0 ps-3">
+                <li v-for="msg in errorMessages" :key="msg">{{ msg }}</li>
+              </ul>
+              <span v-else>{{ errorMessages[0] }}</span>
+            </div>
 
             <form @submit.prevent="handleCreate">
               <!-- 제목 -->
@@ -150,6 +175,28 @@
 <script>
 import { createGroup } from '../api/group'
 
+// ==================== 필드명 → 한국어 라벨 매핑 ====================
+// 백엔드 SplitGroupRequest의 필드명을 화면에 표시할 라벨로 변환
+// 에러 메시지에 "title" 같은 변수명이 노출되지 않도록 함
+const FIELD_LABELS = {
+  title: '그룹 제목',
+  totalPrice: '총 금액',
+  maxParticipants: '최대 참여자 수',
+  pickupLocation: '픽업 장소',
+  closedAt: '모집 마감일',
+  pickupLocationGeo: '픽업 위치 좌표'
+}
+
+// ==================== Spring Validation 메시지 → 한국어 매핑 ====================
+// @NotBlank, @NotNull, @Positive, @Min 등이 반환하는 기본 영문 메시지를 한국어로 변환
+const VALIDATION_MESSAGES = {
+  'must not be blank': '필수 입력 항목입니다',
+  'must not be null': '필수 입력 항목입니다',
+  'must be greater than 0': '0보다 큰 값을 입력해주세요',
+  'must be a positive number': '양수를 입력해주세요',
+  'must be greater than or equal to 2': '최소 2명 이상이어야 합니다'
+}
+
 export default {
   name: 'GroupCreateView',
 
@@ -163,7 +210,7 @@ export default {
         closedAt: ''
       },
       loading: false,
-      errorMessage: ''
+      errorMessages: []   // 단일 문자열 대신 배열로 관리 (필드별 에러 여러 개 가능)
     }
   },
 
@@ -184,21 +231,33 @@ export default {
   methods: {
     async handleCreate() {
       this.loading = true
-      this.errorMessage = ''
+      this.errorMessages = []   // 이전 에러 초기화
 
       try {
         const response = await createGroup(this.form)
         const createdGroup = response.data
-        console.log(response);
-        console.log(createdGroup);
         // 생성된 그룹 상세 페이지로 이동
         this.$router.push(`/groups/${createdGroup.id}`)
       } catch (error) {
         console.error('그룹 생성 실패:', error)
-        if (error.response?.data?.message) {
-          this.errorMessage = error.response.data.message
+        const data = error.response?.data
+
+        if (data?.errors) {
+          // [케이스 1] Validation 에러: errors 맵에 필드별 상세 에러가 담겨 있음
+          // Object.entries()로 { 필드명: 에러메시지 } 쌍을 배열로 변환
+          this.errorMessages = Object.entries(data.errors).map(([field, msg]) => {
+            // 필드명을 한국어 라벨로 변환 (매핑 없으면 원래 필드명 그대로 사용)
+            const label = FIELD_LABELS[field] || field
+            // 영문 Validation 메시지를 한국어로 변환 (매핑 없으면 원래 메시지 그대로)
+            const message = VALIDATION_MESSAGES[msg] || msg
+            return `${label}: ${message}`
+          })
+        } else if (data?.message) {
+          // [케이스 2] BusinessException: 단일 한국어 메시지만 있음 (G002 등)
+          this.errorMessages = [data.message]
         } else {
-          this.errorMessage = '그룹 생성에 실패했습니다.'
+          // [케이스 3] 네트워크 오류 등 예상치 못한 에러
+          this.errorMessages = ['그룹 생성에 실패했습니다.']
         }
       } finally {
         this.loading = false

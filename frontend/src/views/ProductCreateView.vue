@@ -52,8 +52,13 @@
       <div class="col-12 col-md-8 col-lg-6">
         <div class="card shadow">
           <div class="card-body p-4">
-            <!-- 에러 메시지 -->
-            <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+            <!-- 에러 메시지 영역 -->
+            <div v-if="errorMessages.length > 0" class="alert alert-danger">
+              <ul v-if="errorMessages.length > 1" class="mb-0 ps-3">
+                <li v-for="msg in errorMessages" :key="msg">{{ msg }}</li>
+              </ul>
+              <span v-else>{{ errorMessages[0] }}</span>
+            </div>
 
             <form @submit.prevent="handleCreate">
               <!-- 상품명 -->
@@ -164,6 +169,17 @@
 
 <script>
 import { createProduct } from '../api/product'
+import { parseError } from '../utils/errorParser'
+
+const FIELD_LABELS = {
+  name: '상품명',
+  price: '가격',
+  externalId: '외부 ID',
+  productUrl: '상품 URL',
+  imageUrl: '이미지 URL',
+  description: '상품 설명',
+  externalSource: '외부 소스'
+}
 
 export default {
   name: 'ProductCreateView',
@@ -180,14 +196,14 @@ export default {
         description: ''
       },
       loading: false,
-      errorMessage: ''
+      errorMessages: []
     }
   },
 
   methods: {
     async handleCreate() {
       this.loading = true
-      this.errorMessage = ''
+      this.errorMessages = []
 
       try {
         await createProduct(this.form)
@@ -195,11 +211,7 @@ export default {
         this.$router.push('/products')
       } catch (error) {
         console.error('상품 등록 실패:', error)
-        if (error.response?.data?.message) {
-          this.errorMessage = error.response.data.message
-        } else {
-          this.errorMessage = '상품 등록에 실패했습니다.'
-        }
+        this.errorMessages = parseError(error, FIELD_LABELS, '상품 등록에 실패했습니다.')
       } finally {
         this.loading = false
       }

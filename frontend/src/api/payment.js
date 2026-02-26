@@ -21,15 +21,17 @@ import apiClient from './axios'
  * @param {string} paymentKey - 토스페이먼츠에서 발급한 결제 키
  * @param {string} orderId - 주문 ID (우리가 생성)
  * @param {number} amount - 결제 금액
+ * @param {number} groupId - 그룹 ID (결제한 그룹 식별용)
  * @returns {Promise} - 결제 결과
  */
-export const confirmPayment = (paymentKey, orderId, amount) => {
+export const confirmPayment = (paymentKey, orderId, amount, groupId) => {
   // POST /api/payments/confirm
-  // Body: { paymentKey, orderId, amount }
+  // Body: { paymentKey, orderId, amount, groupId }
   return apiClient.post('/payments/confirm', {
     paymentKey,
     orderId,
-    amount
+    amount,
+    groupId
   })
 }
 

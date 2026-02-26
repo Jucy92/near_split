@@ -9,7 +9,7 @@
   1. HomeView 또는 NavBar에서 "프로필" 클릭
   2. router가 /profile로 이동
   3. ProfileView 렌더링
-  4. mounted()에서 loadProfile() 호출 → GET /api/users/me
+  4. mounted()에서 loadProfile() 호출
   5. 프로필 정보 표시
   6. "프로필 수정" 버튼 클릭 → editMode = true → 수정 폼 표시
   7. 수정 후 "저장" → handleUpdate() → PATCH /api/users/me
@@ -19,10 +19,10 @@
   handleUpdate() → PATCH /api/users/me → this.user 갱신
 
   ==================== API 목록 ====================
-  | 기능         | 메서드 | 엔드포인트    | 호출 함수        |
-  |--------------|--------|---------------|------------------|
-  | 프로필 조회  | GET    | /api/users/me | getMyProfile()   |
-  | 프로필 수정  | PATCH  | /api/users/me | updateMyProfile()|
+  | 기능         | 메서드 | 엔드포인트                    | 호출 함수        |
+  |--------------|--------|-------------------------------|------------------|
+  | 프로필 조회  | GET    | /api/users/me                 | getMyProfile()   |
+  | 프로필 수정  | PATCH  | /api/users/me                 | updateMyProfile()|
 
   ==================== 백엔드 응답 구조 ====================
   GET /api/users/me 응답 (UserResponse):
@@ -67,7 +67,12 @@
           </div>
           <div class="card-body p-4">
             <!-- 에러 메시지 -->
-            <div v-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+            <div v-if="errorMessages.length > 0" class="alert alert-danger">
+              <ul v-if="errorMessages.length > 1" class="mb-0 ps-3">
+                <li v-for="msg in errorMessages" :key="msg">{{ msg }}</li>
+              </ul>
+              <span v-else>{{ errorMessages[0] }}</span>
+            </div>
             <!-- 성공 메시지 -->
             <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
 
@@ -269,6 +274,16 @@
 <script>
 import { getMyProfile, updateMyProfile } from '../api/user'
 import { searchAddress as searchAddressApi } from '../api/address'
+import { parseError } from '../utils/errorParser'
+
+const FIELD_LABELS = {
+  nickname: '닉네임',
+  phone: '전화번호',
+  address: '주소',
+  location: '지역',
+  profileImage: '프로필 이미지',
+  password: '비밀번호'
+}
 
 export default {
   name: 'ProfileView',
@@ -287,7 +302,7 @@ export default {
         profileImage: '',   // 프로필 이미지 URL
         password: ''        // 새 비밀번호 (선택)
       },
-      errorMessage: '',
+      errorMessages: [],
       successMessage: '',
       // 주소 검색 관련 상태
       addressKeyword: '',      // 주소 검색어
@@ -297,6 +312,7 @@ export default {
   },
 
   async mounted() {
+    // 프로필 로드
     await this.loadProfile()
   },
 
@@ -310,7 +326,7 @@ export default {
         this.user = response.data
       } catch (error) {
         console.error('프로필 로드 실패:', error)
-        this.errorMessage = '프로필을 불러오는데 실패했습니다.'
+        this.errorMessages = ['프로필을 불러오는데 실패했습니다.']
       } finally {
         this.loading = false
       }
@@ -326,7 +342,7 @@ export default {
       this.editForm.profileImage = this.user.profileImage || ''
       this.editForm.password = ''  // 비밀번호는 항상 빈 값
       this.editMode = true
-      this.errorMessage = ''
+      this.errorMessages = []
       this.successMessage = ''
       // 주소 검색 상태 초기화
       this.addressKeyword = ''
@@ -336,7 +352,7 @@ export default {
     // 수정 취소
     cancelEdit() {
       this.editMode = false
-      this.errorMessage = ''
+      this.errorMessages = []
       // 주소 검색 상태 초기화
       this.addressKeyword = ''
       this.addressResults = []
@@ -396,7 +412,7 @@ export default {
     // 프로필 수정 저장
     async handleUpdate() {
       this.updating = true
-      this.errorMessage = ''
+      this.errorMessages = []
       this.successMessage = ''
 
       try {
@@ -420,14 +436,7 @@ export default {
         this.successMessage = '프로필이 수정되었습니다.'
       } catch (error) {
         console.error('프로필 수정 실패:', error)
-        if (error.response?.data?.message) {
-          this.errorMessage = error.response.data.message
-        } else if (error.response?.data?.errors) {
-          // validation 에러
-          this.errorMessage = Object.values(error.response.data.errors).join(', ')
-        } else {
-          this.errorMessage = '프로필 수정에 실패했습니다.'
-        }
+        this.errorMessages = parseError(error, FIELD_LABELS, '프로필 수정에 실패했습니다.')
       } finally {
         this.updating = false
       }

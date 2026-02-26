@@ -67,10 +67,12 @@
             <h2 class="text-center mb-4">NearSplit</h2>
             <h5 class="text-center text-muted mb-4">로그인</h5>
 
-            <!-- v-if: 조건부 렌더링 (errorMessage가 있을 때만 표시) -->
-            <div v-if="errorMessage" class="alert alert-danger" role="alert">
-              <!-- {{ }}: 데이터 출력 (Mustache 문법) -->
-              {{ errorMessage }}
+            <!-- 에러 메시지 영역 -->
+            <div v-if="errorMessages.length > 0" class="alert alert-danger" role="alert">
+              <ul v-if="errorMessages.length > 1" class="mb-0 ps-3">
+                <li v-for="msg in errorMessages" :key="msg">{{ msg }}</li>
+              </ul>
+              <span v-else>{{ errorMessages[0] }}</span>
             </div>
 
             <!-- @submit.prevent: form 제출 이벤트 리스닝 + 기본 동작 방지 -->
@@ -133,6 +135,14 @@
 <script>
 // API 함수 import
 import { login } from '../api/auth'
+// 공통 에러 파싱 유틸 import
+import { parseError } from '../utils/errorParser'
+
+// 백엔드 필드명 → 한국어 라벨 매핑
+const FIELD_LABELS = {
+  email: '이메일',
+  password: '비밀번호'
+}
 
 // ===========================
 // Vue 컴포넌트 정의 (Options API)
@@ -152,8 +162,8 @@ export default {
         email: '',     // 이메일 입력값
         password: ''   // 비밀번호 입력값
       },
-      loading: false,      // 로그인 중 여부 (버튼 비활성화용)
-      errorMessage: ''     // 에러 메시지 (로그인 실패 시 표시)
+      loading: false,       // 로그인 중 여부 (버튼 비활성화용)
+      errorMessages: []    // 에러 메시지 배열 (로그인 실패 시 표시)
     }
   },
 
@@ -163,8 +173,8 @@ export default {
   methods: {
     // 로그인 처리 함수 (form 제출 시 실행)
     async handleLogin() {
-      this.loading = true       // 로딩 시작 (버튼 비활성화)
-      this.errorMessage = ''    // 이전 에러 메시지 초기화
+      this.loading = true        // 로딩 시작 (버튼 비활성화)
+      this.errorMessages = []   // 이전 에러 메시지 초기화
 
       try {
         // login API 호출 (axios 사용)
@@ -189,17 +199,9 @@ export default {
         this.$router.push('/home')
 
       } catch (error) {
-        // 로그인 실패
+        // 로그인 실패: parseError로 에러 메시지 파싱
         console.error('로그인 실패:', error)
-
-        // 에러 응답에서 메시지 추출
-        if (error.response && error.response.data) {
-          // 백엔드에서 보낸 에러 메시지
-          this.errorMessage = error.response.data.message || '로그인에 실패했습니다.'
-        } else {
-          // 네트워크 에러
-          this.errorMessage = '네트워크 오류가 발생했습니다.'
-        }
+        this.errorMessages = parseError(error, FIELD_LABELS, '네트워크 오류가 발생했습니다.')
 
       } finally {
         // 성공/실패 상관없이 실행

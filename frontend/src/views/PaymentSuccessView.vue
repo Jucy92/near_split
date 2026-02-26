@@ -35,11 +35,11 @@
       </div>
 
       <div class="button-group">
-        <button class="primary-button" @click="goToGroup">
-          그룹으로 돌아가기
+        <button class="primary-button" @click="goToPaymentHistory">
+          결제 내역 보기
         </button>
-        <button class="secondary-button" @click="goToHome">
-          홈으로
+        <button class="secondary-button" @click="closeWindow">
+          완료
         </button>
       </div>
     </div>
@@ -136,10 +136,12 @@ export default {
       try {
         // 백엔드 결제 승인 API 호출
         // POST /api/payments/confirm
+        // groupId를 함께 전달하여 어떤 그룹의 결제인지 저장
         const response = await confirmPayment(
           this.paymentKey,
           this.orderId,
-          this.amount
+          this.amount,
+          this.groupId
         )
 
         console.log('결제 승인 성공:', response.data)
@@ -168,21 +170,24 @@ export default {
     },
 
     /**
-     * 그룹 상세 페이지로 이동
+     * 결제 내역 페이지로 이동
      */
-    goToGroup() {
-      if (this.groupId) {
-        this.$router.push(`/groups/${this.groupId}`)
-      } else {
-        this.$router.push('/groups')
-      }
+    goToPaymentHistory() {
+      this.$router.push('/payments')
     },
 
     /**
-     * 홈으로 이동
+     * 창 닫기 (또는 이전 페이지로)
+     * - 브라우저 히스토리가 있으면 뒤로 가기
+     * - 없으면 그룹 목록으로 이동
      */
-    goToHome() {
-      this.$router.push('/groups')
+    closeWindow() {
+      // 결제 성공 후 창 닫기 - 이전 페이지 또는 그룹 목록으로 이동
+      if (window.history.length > 1) {
+        this.$router.go(-2)  // 결제 페이지 → 성공 페이지이므로 2단계 뒤로
+      } else {
+        this.$router.push('/groups')
+      }
     },
 
     /**
