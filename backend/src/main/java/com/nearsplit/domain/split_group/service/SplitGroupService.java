@@ -14,7 +14,6 @@ import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
-import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,14 +21,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Ref;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,55 +36,45 @@ public class SplitGroupService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
+    // ========================================
+    // 그룹 생성
+    // ========================================
     @Transactional
     public SplitGroup createSplitGroup(Long userId, SplitGroupRequest request) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 회원입니다. 인증 정보를 확인해 주세요.");
         }
-        // 새로운 그룹 생성
-        SplitGroup newGroup = new SplitGroup();
-        newGroup.setHostUserId(userId);
-        newGroup.setTitle(request.getTitle());
-        newGroup.setPickupLocation(request.getPickupLocation());
-        newGroup.setTotalPrice(request.getTotalPrice());
-        newGroup.setMaxParticipants(request.getMaxParticipants());
-        if (request.getClosedAt() != null) {
-            if (!request.getClosedAt().isAfter(LocalDate.now())) {
-                throw new IllegalArgumentException("마감일이 내일 이후로 설정해야 합니다.");
-            }
-        }
-        newGroup.setClosedAt(request.getClosedAt());
+
+        // 도메인 정적 팩토리로 그룹 생성 (마감일 검증 포함)
+        SplitGroup newGroup = SplitGroup.createGroup(
+                userId,
+                request.getTitle(),
+                request.getTotalPrice(),
+                request.getMaxParticipants(),
+                request.getPickupLocation(),
+                request.getClosedAt()
+        );
+
         SplitGroup saved = splitGroupRepository.save(newGroup);
         log.info("생성된 그룹={}", saved);
-
-        /*  // 무료나눔 선착순 2명! => 방장은 당연히 2명을 생각하지만, 실제로는 1명만 되는 문제가 있어서 방장 분리
-        // 새로운 그룹의 사용자 추가
-        Participant participant = new Participant();
-        participant.setSplitGroup(saved);
-        participant.setUserId(userId);
-        participant.setStatus(ParticipantStatus.APPROVED);  // 방장(생성자 = 참여자) 인 경우라 바로 승인 처리
-        participant.setShareAmount(saved.getTotalPrice()
-                .divide(BigDecimal.valueOf(saved.getMaxParticipants()), 2, RoundingMode.HALF_DOWN)); // 나누는 수, 소수점 2자리에서, 반올림
-
-        participantRepository.save(participant);
-        log.info("생성된 그룹 사용자={}", participant);
-        */
-
         return saved;
     }
+
+    // ========================================
+    // 그룹 조회
+    // ========================================
 
     // 모집 중인 전체 그룹 조회
     public Page<SplitGroup> getAllRecruitingGroups(PageRequest pageRequest) {
         return splitGroupRepository.findByStatus(SplitGroupStatus.RECRUITING, pageRequest);
     }
 
-
     public List<Participant> getMySplitGroups(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 회원입니다. 인증 정보를 확인해 주세요.");
         }
 
-        List<Participant> participantGroups = participantRepository/*.findByUserId*/.findByUserIdWithGroup(userId);
+        List<Participant> participantGroups = participantRepository.findByUserIdWithGroup(userId);
         if (participantGroups == null) {
             throw new IllegalArgumentException("그룹에 참여한 정보가 없습니다.");
         }
@@ -99,83 +83,59 @@ public class SplitGroupService {
     }
 
     public SplitGroup getSplitGroup(Long splitGroupId, Long userId) {
-          // 기존에 nickname 없이 hostUserId만 가져간 경우
         SplitGroup group = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-        
-        // queryDSL 설정해서 SplitGroupRepositoryImpl.findSplitGroupWithNickname hostNickname은 가져왔으나, participant 들의 Nickname 가져오기 위해 주석..
-        // Tuple group = splitGroupRepository.findSplitGroupWithNickname(splitGroupId).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        List<Long> userIds = group.getParticipants().stream().map(p -> p.getUserId()).toList();
-
+        // 참여자들 닉네임 조회 후 세팅
+        List<Long> userIds = group.getParticipants().stream().map(Participant::getUserId).toList();
         userIds = new ArrayList<>(userIds);
         userIds.add(group.getHostUserId());
 
-        Map<Long, String> userMap = userRepository.findAllById(userIds).stream().collect(Collectors.toMap(u -> u.getId(), User::getNickname));
-        group.getParticipants().forEach(p -> p.setNickname(userMap.get(p.getUserId())));    // 참여자들 정보에 닉네임 추가해주기
-        return group;
+        Map<Long, String> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getNickname));
+        group.getParticipants().forEach(p -> p.assignNickname(userMap.get(p.getUserId())));
 
+        return group;
     }
+
+    // ========================================
+    // 그룹 수정
+    // ========================================
     @Transactional
     public SplitGroup updateSplitGroup(Long splitGroupId, Long userId, SplitGroupRequest request) {
         SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("수정 권한이 없습니다."));
 
-        boolean hasParticipants = target.getCurrentParticipants() > 0;
-
-        if (request.getTitle() != null) {
-            if (hasParticipants) {
-                throw new IllegalArgumentException("참여자가 있는 경우 제목 변경이 불가합니다.");
-            }
-            target.setTitle(request.getTitle());
-        }
-        if (request.getTotalPrice() != null) {
-            if (hasParticipants) {
-                throw new IllegalArgumentException("참여자가 있는 경우 총 금액이 불가합니다.");
-            }
-            target.setTotalPrice(request.getTotalPrice());
-        }
-        if (request.getMaxParticipants() != null) {
-            if (hasParticipants) {
-                throw new IllegalArgumentException("참여자가 있는 경우 총 인원 변경이 불가합니다.");
-            }
-            if (request.getMaxParticipants() < 1) {
-                throw new IllegalArgumentException("모집 인원이 1명 이상이어야 합니다.");
-            }
-            target.setMaxParticipants(request.getMaxParticipants());
-        }
-        if (request.getPickupLocation() != null) target.setPickupLocation(request.getPickupLocation());
-        if (request.getPickupLocationGeo() != null) target.setPickupLocationGeo(request.getPickupLocationGeo());
-
-        if (request.getClosedAt() != null) {
-            if (!request.getClosedAt().isAfter(LocalDate.now())) {
-                throw new IllegalArgumentException("마감일이 내일 이후로 설정해야 합니다.");
-            }
-            target.setClosedAt(request.getClosedAt());
-        }
-        // 내용 수정하면 참여자한테 내용 변경 됐다고 알림 보내기?
+        // 도메인 메서드로 수정 (참여자 유무 검증 포함)
+        target.updateGroup(
+                request.getTitle(),
+                request.getTotalPrice(),
+                request.getMaxParticipants(),
+                request.getPickupLocation(),
+                request.getPickupLocationGeo(),
+                request.getClosedAt()
+        );
 
         return target;
     }
 
+    // ========================================
+    // 그룹 삭제 (Soft Delete)
+    // ========================================
     @Transactional
     public SplitGroup deleteSplitGroup(Long splitGroupId, Long userId) {
         SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("그룹 또는 수정 권한을 찾을 수 없습니다."));
 
-        if (target.getStatus() != SplitGroupStatus.RECRUITING) {
-            throw new IllegalArgumentException("모집 중인 상태에서만 삭제가 가능합니다.");
-        }
-        if (target.getCurrentParticipants() > 0) {
-            throw new IllegalArgumentException("참여자가 있는 경우 삭제가 불가 합니다.");
-        }
-
-        target.setStatus(SplitGroupStatus.CANCELLED);
-        splitGroupRepository.save(target);  // 삭제가 아닌 상태 변경인 것을 명시적으로 표시하기 위함
+        // 도메인 메서드로 취소 (상태 + 참여자 검증 포함)
+        target.cancel();
+        splitGroupRepository.save(target);
         return target;
     }
 
-
+    // ========================================
+    // 참여 신청
+    // ========================================
     @Transactional
     public Participant joinSplitGroup(Long splitGroupId, Long userId) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
@@ -185,13 +145,8 @@ public class SplitGroupService {
             throw new IllegalArgumentException("이미 참여 신청한 그룹입니다.");
         }
 
-        if (!SplitGroupStatus.RECRUITING.equals(findGroup.getStatus())) {
-            throw new IllegalArgumentException("모집이 마감된 그룹입니다.");
-        }
-
-        if (findGroup.getCurrentParticipants() >= findGroup.getMaxParticipants()) {
-            throw new IllegalArgumentException("정원이 마감되었습니다.");
-        }
+        // 도메인 메서드로 참여 가능 여부 검증
+        findGroup.validateCanJoin();
 
         Participant joiner = Participant.builder()
                 .splitGroup(findGroup)
@@ -199,61 +154,56 @@ public class SplitGroupService {
                 .userId(userId)
                 .build();
 
+        // 알림 발송 (인프라 관심사 → 서비스 책임)
         notificationService.createNotification(findGroup.getHostUserId(), NotificationType.JOIN_REQUEST,
-                "그룹 참여 요청", "그룹 참여 요청이 왔습니다.", findGroup.getId(), ReferenceType.SPLIT_GROUP);       // 리턴을 사용할 필요가 없구나..?
-        log.info("findGroup.getClass().getName()={}", findGroup.getClass().getName());
+                "그룹 참여 요청", "그룹 참여 요청이 왔습니다.", findGroup.getId(), ReferenceType.SPLIT_GROUP);
 
         return participantRepository.save(joiner);
     }
 
+    // ========================================
+    // 참여 취소
+    // ========================================
     @Transactional
     public Participant cancelJoin(Long groupId, Long userId) {
         Participant participant = participantRepository.findBySplitGroupIdAndUserId(groupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("참여 신청 내역이 없습니다."));
 
-        if (ParticipantStatus.PENDING != participant.getStatus()) {
-            throw new IllegalArgumentException("대기 중인 신청만 취소할 수 있습니다.");
-        }
+        // 도메인 메서드로 취소 가능 여부 검증
+        participant.validateCancellable();
 
         participantRepository.delete(participant);
 
-        // 알림 삭제 요청
-        notificationService.deletedNotification(participant.getSplitGroup().getHostUserId(), groupId, ReferenceType.SPLIT_GROUP, NotificationType.JOIN_REQUEST);
+        // 알림 삭제 (인프라 관심사 → 서비스 책임)
+        notificationService.deletedNotification(participant.getSplitGroup().getHostUserId(),
+                groupId, ReferenceType.SPLIT_GROUP, NotificationType.JOIN_REQUEST);
 
         return participant;
     }
 
+    // ========================================
+    // 참여자 승인
+    // ========================================
     @Transactional
     public Participant approveParticipant(Long splitGroupId, Long hostId, ParticipantActionRequest actionRequest) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
 
-        if (!findGroup.getHostUserId().equals(hostId)) {
-            throw new IllegalArgumentException("방장만 승인할 수 있습니다.");
-        }
+        // 도메인 메서드로 방장 검증
+        findGroup.validateHost(hostId);
 
         Participant participant = participantRepository.findBySplitGroupIdAndUserId(splitGroupId, actionRequest.getParticipantUserId())
                 .orElseThrow(() -> new IllegalArgumentException("참여 신청 내역이 없습니다."));
 
-        if (ParticipantStatus.APPROVED.equals(participant.getStatus())) {
-            throw new IllegalArgumentException("이미 승인된 참여자입니다.");
-        }
+        // 도메인 메서드로 승인 처리 (분담금 계산 + 인원 증가 + FULL 전환)
+        boolean becameFull = findGroup.approveParticipant(participant);
 
-        participant.setStatus(ParticipantStatus.APPROVED);
-        participant.setShareAmount(findGroup.getTotalPrice().divide(BigDecimal.valueOf(findGroup.getMaxParticipants() + 1), 2, RoundingMode.HALF_DOWN));
-
+        // 알림 발송 (인프라 관심사 → 서비스 책임)
         notificationService.createNotification(participant.getUserId(), NotificationType.APPROVED,
                 "그룹 참여 승인", "참여 신청이 승인 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
 
-
-
-
-        findGroup.setCurrentParticipants(findGroup.getCurrentParticipants() + 1);
-
-
-        // 현재 인원 = 총 모집 인원 => 상태 풀로 변경
-        if (findGroup.getMaxParticipants() == findGroup.getCurrentParticipants()) {
-            findGroup.setStatus(SplitGroupStatus.FULL);
+        // 정원 도달 시 전체 참여자에게 모집 완료 알림
+        if (becameFull) {
             for (Participant findParticipant : findGroup.getParticipants()) {
                 notificationService.createNotification(findParticipant.getUserId(), NotificationType.GROUP_FULL,
                         "모집 완료", "모집이 완료 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
@@ -261,44 +211,38 @@ public class SplitGroupService {
         }
 
         return participant;
-
     }
 
+    // ========================================
+    // 참여자 거절
+    // ========================================
     @Transactional
     public Participant rejectedParticipant(Long splitGroupId, Long hostId, ParticipantActionRequest actionRequest) {
         SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
 
-        if (!findGroup.getHostUserId().equals(hostId)) {
-            throw new IllegalArgumentException("방장만 거절할 수 있습니다.");
-        }
+        // 도메인 메서드로 방장 검증
+        findGroup.validateHost(hostId);
 
         Participant participant = participantRepository.findBySplitGroupIdAndUserId(splitGroupId, actionRequest.getParticipantUserId())
                 .orElseThrow(() -> new IllegalArgumentException("참여 신청 내역이 없습니다."));
 
-        if (ParticipantStatus.REJECTED.equals(participant.getStatus())) {
-            throw new IllegalArgumentException("이미 거절된 참여자입니다.");
-        }
-        participantRepository.delete(participant);  // 삭제하면 위에 체크 로직도 불필요
+        participantRepository.delete(participant);
 
-        // participant.setStatus(ParticipantStatus.REJECTED); // 거절한 내역 남겨두려고 했는데, 재요청 시 로직 복잡해져서 일단 삭제로 변경
-
-
+        // 알림 발송 (인프라 관심사 → 서비스 책임)
         notificationService.createNotification(participant.getUserId(), NotificationType.REJECTED,
                 "그룹 참여 거절", "참여 신청이 거절 됐습니다.", splitGroupId, ReferenceType.SPLIT_GROUP);
 
         return participant;
     }
 
+    // ========================================
+    // 참여자 수 조회
+    // ========================================
     public long getParticipantCount(Long splitGroupId, Long userId) {
-        SplitGroup findGroup = splitGroupRepository.findById(splitGroupId)
+        splitGroupRepository.findById(splitGroupId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 그룹입니다."));
-        /*  // 리스트에서 타이틀 보고 조회해서 참여 인원 (3/5) 이런식으로 봐야할 수도 있으니깐... 일단 패스
-        if (!participantRepository.existsBySplitGroupIdAndUserId(splitGroupId, userId)) {
-            throw new IllegalArgumentException("참여자만 인원을 조회할 수 있습니다?");
-        }
-        */
-        long count = participantRepository.countBySplitGroupIdAndStatus(splitGroupId, ParticipantStatus.APPROVED);
-        return count;
+
+        return participantRepository.countBySplitGroupIdAndStatus(splitGroupId, ParticipantStatus.APPROVED);
     }
 }

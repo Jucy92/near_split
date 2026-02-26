@@ -27,12 +27,13 @@ public class AuthService {
         //if (userRepository.existsByNickname(request.getNickname())) {     // 여긴 필요 없고 수정 할 때 체크
         //    throw new IllegalArgumentException("이미 등록된 닉네임입니다.");
         //}
-        User user = User.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .nickname(nickNameGenerator.generate())
-                .build();
+        // 정적 팩토리로 User 생성 (신뢰 점수, 인증 상태 초기화 포함)
+        User user = User.createUser(
+                request.getEmail(),
+                passwordEncoder.encode(request.getPassword()),
+                request.getName(),
+                nickNameGenerator.generate()
+        );
 
         User saved = userRepository.save(user);
         return saved.getId();

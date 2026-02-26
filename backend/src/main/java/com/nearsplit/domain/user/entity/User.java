@@ -11,9 +11,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-@Getter @Setter @Builder
-@NoArgsConstructor//(access = AccessLevel.PROTECTED)    // Setter 사용안하면 이거 활성화 시켜도 됨 -> UserRepositoryTest 에서 Set 사용
-@AllArgsConstructor
+@Getter @Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Table(name = "users")
 public class User {
 
@@ -56,6 +56,59 @@ public class User {
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
 
+    // ========================================
+    // 정적 팩토리 메서드
+    // ========================================
+
+    /**
+     * 회원 가입용 생성
+     * - 신뢰 점수 5.00, 미인증 상태로 초기화
+     */
+    public static User createUser(String email, String encodedPassword, String name, String nickname) {
+        return User.builder()
+                .email(email)
+                .password(encodedPassword)
+                .name(name)
+                .nickname(nickname)
+                .trustScore(BigDecimal.valueOf(5.00))
+                .isVerified(false)
+                .build();
+    }
+
+    // ========================================
+    // 도메인 메서드 - 프로필 수정
+    // ========================================
+
+    /**
+     * 프로필 정보 수정
+     * - null이 아닌 필드만 변경 (부분 업데이트)
+     * - 닉네임 중복 검증은 서비스에서 수행 (Repository 필요)
+     */
+    public void updateProfile(String nickname, String address, String location,
+                              String profileImage, String phone) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (address != null) {
+            this.address = address;
+        }
+        if (location != null) {
+            this.location = location;
+        }
+        if (profileImage != null) {
+            this.profileImage = profileImage;
+        }
+        if (phone != null) {
+            this.phone = phone;
+        }
+    }
+
+    /**
+     * 좌표 정보 업데이트
+     * - 주소 변경 시 외부 API(VWorld)로 변환된 좌표를 설정
+     */
+    public void updateCoordinates(Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 }
-
-

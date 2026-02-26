@@ -7,7 +7,6 @@ import com.nearsplit.domain.product.entity.Product;
 import com.nearsplit.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,31 +31,31 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProductService {
-    private final ProductRepository productRepository;  // final 추가!
+    private final ProductRepository productRepository;
 
     @Transactional
     public Product createProduct(ProductRequest productRequest) {
-        Product newProduct = Product.builder()
-                .externalId(productRequest.getExternalId())
-                .externalSource(productRequest.getExternalSource())
-                .name(productRequest.getName())
-                .price(productRequest.getPrice())
-                .productUrl(productRequest.getProductUrl())
-                .imageUrl(productRequest.getImageUrl())
-                .description(productRequest.getDescription())
-                .build();
+        // 정적 팩토리로 Product 생성
+        Product newProduct = Product.createProduct(
+                productRequest.getName(),
+                productRequest.getPrice(),
+                productRequest.getImageUrl(),
+                productRequest.getProductUrl(),
+                productRequest.getDescription(),
+                productRequest.getExternalId(),
+                productRequest.getExternalSource()
+        );
 
-        // API 정보가 들어 있으면 중복 체크
-        if (newProduct.getExternalId() != null && newProduct.getExternalSource() != null) {
+        // 외부 API 상품이면 중복 체크
+        if (newProduct.isExternalProduct()) {
             Optional<Product> existing =
-                    productRepository.findByExternalIdAndExternalSource(productRequest.getExternalId(),productRequest.getExternalSource());
+                    productRepository.findByExternalIdAndExternalSource(
+                            productRequest.getExternalId(), productRequest.getExternalSource());
 
             // 있으면 가격만 업데이트하고 반환
             if (existing.isPresent()) {
                 Product findProduct = existing.get();
-                if (!findProduct.getPrice().equals(newProduct.getPrice())) {
-                    findProduct.setPrice(newProduct.getPrice());
-                }
+                findProduct.updatePriceIfChanged(newProduct.getPrice());
                 log.info("외부 API 상품 업데이트: {}", findProduct.getId());
                 return findProduct;
             }
@@ -88,22 +87,14 @@ public class ProductService {
         Product product = productRepository.findById(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        // 변경된 필드만 업데이트
-        if (request.getName() != null) {
-            product.setName(request.getName());
-        }
-        if (request.getPrice() != null) {
-            product.setPrice(request.getPrice());
-        }
-        if (request.getImageUrl() != null) {
-            product.setImageUrl(request.getImageUrl());
-        }
-        if (request.getProductUrl() != null) {
-            product.setProductUrl(request.getProductUrl());
-        }
-        if (request.getDescription() != null) {
-            product.setDescription(request.getDescription());
-        }
+        // 도메인 메서드로 상품 정보 업데이트
+        product.updateInfo(
+                request.getName(),
+                request.getPrice(),
+                request.getImageUrl(),
+                request.getProductUrl(),
+                request.getDescription()
+        );
 
         log.info("상품 수정 완료: {}", productId);
         return product;  // @Transactional이 자동으로 save 처리

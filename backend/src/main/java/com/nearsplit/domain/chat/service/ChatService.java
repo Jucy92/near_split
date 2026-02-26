@@ -5,7 +5,9 @@ import com.nearsplit.common.exception.ErrorCode;
 import com.nearsplit.domain.chat.dto.ChatMessageRequest;
 import com.nearsplit.domain.chat.entity.ChatMessage;
 import com.nearsplit.domain.chat.repository.ChatMessageRepository;
+import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
+import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
 import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -25,6 +28,7 @@ import java.util.List;
 public class ChatService {
 
     private final ChatMessageRepository chatMessageRepository;
+    private final SplitGroupRepository splitGroupRepository;
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
@@ -33,7 +37,13 @@ public class ChatService {
     @Transactional
     public ChatMessage saveMessage(ChatMessageRequest request, Long senderId) {
         // 1. 그룹 참여자 확인
-        if (!participantRepository.existsBySplitGroupIdAndUserId(request.getGroupId(), senderId)) {
+        SplitGroup group = splitGroupRepository.findById(senderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));     // 권한 없는 알림은 뜨는데 해당화면이 꺼지지 않아서 조회는 가능..
+
+        boolean isHost = group.getHostUserId().equals(senderId);
+        boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(request.getGroupId(), senderId);
+
+        if (!isHost && !isParticipant) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
@@ -60,7 +70,13 @@ public class ChatService {
     // 메시지 히스토리 조회 (페이징)
     public Page<ChatMessage> getMessageHistory(Long groupId, Long userId, Pageable pageable) {
         // 그룹 참여자 확인
-        if (!participantRepository.existsBySplitGroupIdAndUserId(groupId, userId)) {
+        SplitGroup group = splitGroupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));     // 권한 없는 알림은 뜨는데 해당화면이 꺼지지 않아서 조회는 가능..
+
+        boolean isHost = group.getHostUserId().equals(userId);
+        boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(groupId, userId);
+
+        if (!isHost && !isParticipant) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
@@ -70,7 +86,13 @@ public class ChatService {
     // 최근 메시지 조회 (최대 50개)
     public List<ChatMessage> getRecentMessages(Long groupId, Long userId) {
         // 그룹 참여자 확인
-        if (!participantRepository.existsBySplitGroupIdAndUserId(groupId, userId)) {
+        SplitGroup group = splitGroupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
+        boolean isHost = group.getHostUserId().equals(userId);
+        boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(groupId, userId);
+
+        if (!isHost && !isParticipant) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 

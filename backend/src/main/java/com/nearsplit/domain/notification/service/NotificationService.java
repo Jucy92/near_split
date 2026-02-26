@@ -41,15 +41,9 @@ public class NotificationService {
     @Transactional
     public void createNotification(Long userId, NotificationType type, String title, String message,
                                    Long referenceId, ReferenceType referenceType) {
-        Notification notification = Notification.builder()
-                .userId(userId)
-                .type(type)
-                .title(title)
-                .message(message)
-                .referenceId(referenceId)
-                .referenceType(referenceType)
-                .isRead(false)
-                .build();
+        // 정적 팩토리로 Notification 생성 (isRead=false 초기화 포함)
+        Notification notification = Notification.createNotification(
+                userId, type, title, message, referenceId, referenceType);
 
         Notification saved = notificationRepository.save(notification);
         NotificationResponse response = NotificationResponse.from(saved);
@@ -94,9 +88,8 @@ public class NotificationService {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
-        if (!notification.getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "사용자 정보가 다릅니다.");
-        }
+        // 도메인 메서드로 소유자 검증 + 읽음 처리
+        notification.validateOwner(userId);
         notification.markAsRead();
         //notificationRepository.save(notification);
     }

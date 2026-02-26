@@ -25,9 +25,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "products")
-@Setter @Getter @Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter @Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Product {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,6 +52,72 @@ public class Product {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    // ========================================
+    // 정적 팩토리 메서드
+    // ========================================
 
+    /**
+     * 상품 생성
+     */
+    public static Product createProduct(String name, BigDecimal price, String imageUrl,
+                                        String productUrl, String description,
+                                        String externalId, String externalSource) {
+        return Product.builder()
+                .name(name)
+                .price(price)
+                .imageUrl(imageUrl)
+                .productUrl(productUrl)
+                .description(description)
+                .externalId(externalId)
+                .externalSource(externalSource)
+                .build();
+    }
 
+    // ========================================
+    // 도메인 메서드 - 상품 수정
+    // ========================================
+
+    /**
+     * 상품 정보 수정
+     * - null이 아닌 필드만 변경 (부분 업데이트)
+     */
+    public void updateInfo(String name, BigDecimal price, String imageUrl,
+                           String productUrl, String description) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (price != null) {
+            this.price = price;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (productUrl != null) {
+            this.productUrl = productUrl;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+    }
+
+    /**
+     * 외부 API 상품 가격 변경 시 업데이트
+     * - 기존 가격과 다를 때만 변경
+     */
+    public void updatePriceIfChanged(BigDecimal newPrice) {
+        if (!this.price.equals(newPrice)) {
+            this.price = newPrice;
+        }
+    }
+
+    // ========================================
+    // 상태 판단 메서드
+    // ========================================
+
+    /**
+     * 외부 API 연동 상품인지 여부
+     */
+    public boolean isExternalProduct() {
+        return this.externalId != null && this.externalSource != null;
+    }
 }

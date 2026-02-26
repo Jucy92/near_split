@@ -5,7 +5,6 @@ import com.nearsplit.domain.payment.dto.PaymentResponse;
 import com.nearsplit.domain.payment.entity.Payment;
 import com.nearsplit.domain.payment.repository.PaymentRepository;
 import com.nearsplit.domain.split_group.entity.Participant;
-import com.nearsplit.domain.split_group.entity.ParticipantStatus;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.repository.ParticipantRepository;
 import com.nearsplit.domain.split_group.repository.SplitGroupRepository;
@@ -92,9 +91,8 @@ public class PaymentService {
         Participant participant = participantRepository.findBySplitGroupIdAndUserId(group.getId(), userId)
                 .orElseThrow(() -> new RuntimeException("일치하는 참여자 정보가 없습니다"));
 
-        if (participant.getStatus() != ParticipantStatus.APPROVED) {    // 프론트를 믿지 말자...
-            throw  new RuntimeException("참여자가 승인 상태가 아닙니다");
-        }
+        // 도메인 메서드로 결제 가능 여부 검증 + 상태 전이 (APPROVED → PAID)
+        participant.markAsPaid();
 
         // 2. TossPaymentClient로 결제 승인 API 호출
         TossPaymentResponse tossResponse = tossPaymentClient.confirmPayment(
@@ -104,7 +102,6 @@ public class PaymentService {
         );
 
         // 3. 데이터 처리 및 Payment 엔티티 생성,저장
-        participant.setStatus(ParticipantStatus.PAID);
 
         Payment payment = Payment.createFromTossResponse(tossResponse, user, participant.getSplitGroup());
         paymentRepository.save(payment);
@@ -154,17 +151,14 @@ public class PaymentService {
         Participant participant = participantRepository.findBySplitGroupIdAndUserId(payment.getGroup().getId(), payment.getUser().getId())
                 .orElseThrow(() -> new RuntimeException("참여자 정보를 찾을 수 없습니다."));
 
-        if (participant.getStatus() != ParticipantStatus.PAID) {
-            throw new RuntimeException("결제된 상태에서만 취소할 수 있습니다.");
-        }
-
         // 2. TossPaymentClient로 결제 취소 API 호출
         tossPaymentClient.cancelPayment(paymentKey, cancelReason);
 
         // 3. DB 상태 업데이트
         payment.cancel();   // payment 상태 값 변경 (DONE -> CANCELED)
 
-        participant.setStatus(ParticipantStatus.APPROVED);
+        // 도메인 메서드로 결제 취소 검증 + 상태 전이 (PAID → APPROVED)
+        participant.cancelPayment();
 
         log.info("결제 취소 성공: paymentKey={}", paymentKey);
 
