@@ -313,10 +313,12 @@ export default {
 
       // window.open(URL, 창이름, 옵션)
       // 창 이름을 groupId로 해서 같은 그룹 채팅은 한 창에서만 열리도록
+      // toolbar=no, location=no, status=no, menubar=no 옵션으로
+      // 주소창·툴바를 숨겨서 채팅 내용만 보이는 창처럼 연출
       window.open(
         `/chat/${groupId}`,
         `chat_${groupId}`,
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,location=no,status=no,menubar=no`
       )
     },
 

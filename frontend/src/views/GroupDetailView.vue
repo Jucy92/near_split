@@ -587,10 +587,17 @@ export default {
 
       // window.open(URL, 창이름, 옵션)
       // 창 이름을 groupId로 해서 같은 그룹 채팅은 한 창에서만 열리도록
+      // window.open 세 번째 인자: 팝업 창의 모양 옵션
+      // toolbar=no   → 상단 툴바(앞으로/뒤로 버튼 등) 숨김
+      // location=no  → 주소창 숨김 (브라우저 보안 정책상 완전히 안 숨겨질 수 있음)
+      // status=no    → 하단 상태바 숨김
+      // menubar=no   → 메뉴바 숨김
+      // 이 옵션들로 카카오톡처럼 채팅 내용만 보이는 창에 가깝게 만들 수 있음
+      // (완전히 동일하게는 불가 - 카카오톡은 Electron 기반 네이티브 앱이라 브라우저 자체가 없음)
       window.open(
         `/chat/${this.group.id}`,
         `chat_${this.group.id}`,
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,location=no,status=no,menubar=no`
       )
     },
 

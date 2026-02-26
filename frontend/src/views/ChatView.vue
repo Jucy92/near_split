@@ -71,37 +71,47 @@
 
           <!-- ==================== 헤더 영역 ==================== -->
           <!--
-            헤더 구성:
-            - 왼쪽: 뒤로가기 버튼 + 채팅방 제목 + 연결 상태
-            - 오른쪽: 그룹 타이틀 (groupTitle)
+            헤더 구성: [나가기] [연결됨] [그룹 제목...]
+            - 한 줄 flex 레이아웃으로 구성
+            - 버튼과 배지는 고정 크기(flex-shrink-0)로 절대 줄어들지 않음
+            - 그룹 제목은 남은 공간을 모두 차지하고, 넘치면 자동으로 ... 처리
+          -->
+          <!--
+            justify-content-between: 왼쪽 그룹(버튼+배지)과 오른쪽 제목을 양 끝에 배치
           -->
           <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <!--
-                뒤로가기 버튼: 팝업 창인 경우 창 닫기, 아닌 경우 그룹 상세로 이동
-                @click: handleBackClick() 메서드로 처리
-              -->
+
+            <!-- 왼쪽 고정 그룹: 버튼과 배지를 묶어서 고정 크기 유지 -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
               <button
                 @click="handleBackClick"
-                class="btn btn-outline-secondary btn-sm me-3"
+                class="btn btn-outline-secondary btn-sm"
               >
                 &larr; 나가기
               </button>
-              <h5 class="mb-0">채팅방</h5>
-              <!--
-                WebSocket 연결 상태 표시
-                :class: connected 값에 따라 클래스 동적 변경
-                connected가 true면 bg-success(초록), false면 bg-danger(빨강)
-              -->
               <span
-                class="badge ms-2"
+                class="badge"
                 :class="connected ? 'bg-success' : 'bg-danger'"
               >
                 {{ connected ? '연결됨' : '연결 끊김' }}
               </span>
             </div>
-            <!-- 오른쪽: 그룹 타이틀 (API에서 조회) -->
-            <span class="text-primary fw-bold">{{ groupTitle || '로딩중...' }}</span>
+
+            <!--
+              오른쪽 그룹 제목 (우측 끝 배치 + 말줄임표)
+
+              max-width: 60%  : 왼쪽 버튼 영역과 겹치지 않도록 최대 너비 제한
+                                창이 매우 좁아져도 버튼을 침범하지 않음
+              text-truncate   : 제목이 max-width를 넘으면 자동으로 ... 처리
+              min-width: 0    : flex item 기본값(auto) 때문에 text-truncate가 안 먹히는 것을 방지
+            -->
+            <span
+              class="text-primary fw-bold text-truncate"
+              style="min-width: 0; max-width: 60%;"
+            >
+              {{ groupTitle || '로딩중...' }}
+            </span>
+
           </div>
 
           <!-- ==================== 메시지 목록 영역 ==================== -->
