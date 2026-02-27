@@ -37,14 +37,11 @@ public class ChatService {
     @Transactional
     public ChatMessage saveMessage(ChatMessageRequest request, Long senderId) {
         // 1. 그룹 참여자 확인
-        SplitGroup group = splitGroupRepository.findById(senderId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));     // 권한 없는 알림은 뜨는데 해당화면이 꺼지지 않아서 조회는 가능..
-
-        boolean isHost = group.getHostUserId().equals(senderId);
+        boolean isHost = splitGroupRepository.existsByIdAndHostUserId(request.getGroupId(), senderId);
         boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(request.getGroupId(), senderId);
 
         if (!isHost && !isParticipant) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
+            throw new BusinessException(ErrorCode.FORBIDDEN);    // 권한 없는 알림은 뜨는데 화면이 꺼지지 않아서 조회는 가능 => 프론트에서 ws 연결하는 로직이 따로 있어서 그럼
         }
 
         // 2. 사용자 정보 조회
@@ -70,10 +67,7 @@ public class ChatService {
     // 메시지 히스토리 조회 (페이징)
     public Page<ChatMessage> getMessageHistory(Long groupId, Long userId, Pageable pageable) {
         // 그룹 참여자 확인
-        SplitGroup group = splitGroupRepository.findById(groupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));     // 권한 없는 알림은 뜨는데 해당화면이 꺼지지 않아서 조회는 가능..
-
-        boolean isHost = group.getHostUserId().equals(userId);
+        boolean isHost = splitGroupRepository.existsByIdAndHostUserId(groupId, userId);
         boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(groupId, userId);
 
         if (!isHost && !isParticipant) {
@@ -86,10 +80,7 @@ public class ChatService {
     // 최근 메시지 조회 (최대 50개)
     public List<ChatMessage> getRecentMessages(Long groupId, Long userId) {
         // 그룹 참여자 확인
-        SplitGroup group = splitGroupRepository.findById(groupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
-
-        boolean isHost = group.getHostUserId().equals(userId);
+        boolean isHost = splitGroupRepository.existsByIdAndHostUserId(groupId, userId);
         boolean isParticipant = participantRepository.existsBySplitGroupIdAndUserId(groupId, userId);
 
         if (!isHost && !isParticipant) {

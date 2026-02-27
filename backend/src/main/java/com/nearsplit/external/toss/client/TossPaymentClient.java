@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
@@ -71,6 +72,8 @@ public class TossPaymentClient {
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, resp) -> {     // 첫 번째 인자 = 언제 실행할지, 두 번째 인자 = 무엇을 실행할지
                         log.error("토스 결제 승인 실패: status={}", resp.getStatusCode());
+                        String resBody = StreamUtils.copyToString(resp.getBody(), StandardCharsets.UTF_8);
+                        log.error("토스 결제 승인 실패: 응답()={}", resBody);
                         throw new RuntimeException("결제 승인에 실패했습니다.");
                     })
                     .body(TossPaymentResponse.class);

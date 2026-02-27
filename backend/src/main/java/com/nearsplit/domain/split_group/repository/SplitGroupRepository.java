@@ -22,6 +22,8 @@ public interface SplitGroupRepository extends JpaRepository<SplitGroup, Long>, S
 
     // 상태로 그룹 조회 (Enum 사용)
     public List<SplitGroup> findByStatus(SplitGroupStatus status);
-    // 호스트 + 상태로 조회
+
+
+    boolean existsByIdAndHostUserId(Long groupId, Long userId);
 
 }
