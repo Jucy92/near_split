@@ -33,13 +33,10 @@ class ParticipantRepositoryTest {
 
     @BeforeEach
     void 소분그룹생성() {
-        SplitGroup group = new SplitGroup();
-        group.setHostUserId(1L);
-        group.setTitle("쿠팡 양배추 소분");
-        group.setTotalPrice(BigDecimal.valueOf(30_000));
-        group.setMaxParticipants(5);
-        group.setPickupLocation("수유역 4번 출구 옆 작업장");
-        group.setClosedAt(LocalDate.now().plusDays(7));
+        SplitGroup group = SplitGroup.createGroup(
+                1L, "쿠팡 양배추 소분", BigDecimal.valueOf(30_000),
+                5, "수유역 4번 출구 옆 작업장", LocalDate.now().plusDays(7)
+        );
 
         splitGroup = splitGroupRepository.save(group);
     }
@@ -47,11 +44,12 @@ class ParticipantRepositoryTest {
     @Test
     void 그룹_참여자생성() {
         // given
-        Participant participant = new Participant();
-        participant.setSplitGroup(splitGroup);
-        participant.setQuantity(2);
-        participant.setUserId(2L);
-        participant.setShareAmount(BigDecimal.valueOf(6_000));
+        Participant participant = Participant.builder()
+                .splitGroup(splitGroup)
+                .quantity(2)
+                .userId(2L)
+                .shareAmount(BigDecimal.valueOf(6_000))
+                .build();
 
         // when
         Participant saved = groupParticipantRepository.save(participant);
@@ -68,16 +66,18 @@ class ParticipantRepositoryTest {
     @Test
     void 그룹_모든_참여자_조회() {
         // given
-        Participant participant1 = new Participant();
-        participant1.setSplitGroup(splitGroup);
-        participant1.setQuantity(2);
-        participant1.setUserId(2L);
-        participant1.setShareAmount(BigDecimal.valueOf(6_000));
-        Participant participant2 = new Participant();
-        participant2.setSplitGroup(splitGroup);
-        participant2.setQuantity(2);
-        participant2.setUserId(3L);
-        participant2.setShareAmount(BigDecimal.valueOf(6_000));
+        Participant participant1 = Participant.builder()
+                .splitGroup(splitGroup)
+                .quantity(2)
+                .userId(2L)
+                .shareAmount(BigDecimal.valueOf(6_000))
+                .build();
+        Participant participant2 = Participant.builder()
+                .splitGroup(splitGroup)
+                .quantity(2)
+                .userId(3L)
+                .shareAmount(BigDecimal.valueOf(6_000))
+                .build();
 
         // when
         Participant saved1 = groupParticipantRepository.save(participant1);

@@ -2,7 +2,6 @@ package com.nearsplit.domain.user.repository;
 
 import com.nearsplit.config.QueryDslConfig;
 import com.nearsplit.domain.user.entity.User;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -10,11 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.as;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest    // 엔티티 기반으로 데이터 베이스 빈만 등록
 @Import(QueryDslConfig.class)  // QueryDSL의 JPAQueryFactory 빈 로드
@@ -27,12 +22,12 @@ class UserRepositoryTest {
     @Test
     void 사용자_저장_및_조회() {
         // given
-        User user = User.builder()
-                .email("test1@test.com")
-                .name("사용자1")
-                .nickname("테스터")
-                .password(passwordEncoder.encode("test1234"))
-                .build();
+        User user = User.createUser(
+                "test1@test.com",
+                passwordEncoder.encode("test1234"),
+                "사용자1",
+                "테스터"
+        );
 
         // when
         User savedUser = userRepository.save(user);
@@ -47,11 +42,12 @@ class UserRepositoryTest {
     @Test
     void 이메일로_사용자_조회() {
         // given
-        User user = new User();
-        user.setEmail("test1@test.com");
-        user.setName("사용자1");
-        user.setNickname("테스터");
-        user.setPassword(passwordEncoder.encode("test1234"));
+        User user = User.createUser(
+                "test1@test.com",
+                passwordEncoder.encode("test1234"),
+                "사용자1",
+                "테스터"
+        );
         userRepository.save(user);
 
         // when
@@ -65,11 +61,12 @@ class UserRepositoryTest {
     @Test
     void 이메일중복확인() {
         // given
-        User user = new User();
-        user.setEmail("test1@test.com");
-        user.setName("사용자1");
-        user.setNickname("테스터");
-        user.setPassword(passwordEncoder.encode("test1234"));
+        User user = User.createUser(
+                "test1@test.com",
+                passwordEncoder.encode("test1234"),
+                "사용자1",
+                "테스터"
+        );
         userRepository.save(user);
 
         // when
