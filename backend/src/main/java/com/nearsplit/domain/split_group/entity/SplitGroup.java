@@ -2,6 +2,7 @@ package com.nearsplit.domain.split_group.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.locationtech.jts.geom.Point;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -28,8 +29,8 @@ public class SplitGroup {
     @Column(name = "host_user_id", nullable = false)
     private Long hostUserId;
 
-    private Double latitude;
-    private Double longitude;
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point location;         // 픽업 위치 좌표 (PostGIS Point, WGS84)
 
     @JoinColumn(name = "product_id")
     private Long productId;
@@ -40,7 +41,6 @@ public class SplitGroup {
     @Builder.Default
     private int currentParticipants = 0;
     private String pickupLocation;
-    private String pickupLocationGeo;
     private LocalDate pickupDate;
     private LocalDate closedAt;
     @Enumerated(EnumType.STRING)
@@ -91,7 +91,7 @@ public class SplitGroup {
      * - 마감일은 항상 내일 이후여야 함
      */
     public void updateGroup(String title, BigDecimal totalPrice, Integer maxParticipants,
-                            String pickupLocation, String pickupLocationGeo, LocalDate closedAt) {
+                            String pickupLocation, Point location, LocalDate closedAt) {
         boolean hasParticipants = hasParticipants();
 
         if (title != null) {
@@ -118,13 +118,21 @@ public class SplitGroup {
         if (pickupLocation != null) {
             this.pickupLocation = pickupLocation;
         }
-        if (pickupLocationGeo != null) {
-            this.pickupLocationGeo = pickupLocationGeo;
+        if (location != null) {
+            this.location = location;
         }
         if (closedAt != null) {
             validateClosedDate(closedAt);
             this.closedAt = closedAt;
         }
+    }
+
+    /**
+     * 위치 좌표 업데이트
+     * - 픽업 주소 변경 시 VWorld API로 변환된 좌표를 PostGIS Point로 설정
+     */
+    public void updateLocation(Point location) {
+        this.location = location;
     }
 
     // ========================================

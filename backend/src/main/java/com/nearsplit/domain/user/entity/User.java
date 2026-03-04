@@ -2,6 +2,7 @@ package com.nearsplit.domain.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.locationtech.jts.geom.Point;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -33,16 +34,15 @@ public class User {
 
     @Column(length = 20)
     private String phone;
-    private Double latitude;        // 위도
-    private Double longitude;       // 경도
+
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point location;         // 위치 좌표 (PostGIS Point, WGS84)
 
     // 회원 수정 or 다른 곳에서 입력
     @Column(length = 500)
     private String profileImage;
     @Column(length = 500)
     private String address;
-    @Column(length = 500)
-    private String location;
 
     @Builder.Default
     private BigDecimal trustScore = BigDecimal.valueOf(5.00);
@@ -84,16 +84,13 @@ public class User {
      * - null이 아닌 필드만 변경 (부분 업데이트)
      * - 닉네임 중복 검증은 서비스에서 수행 (Repository 필요)
      */
-    public void updateProfile(String nickname, String address, String location,
+    public void updateProfile(String nickname, String address,
                               String profileImage, String phone) {
         if (nickname != null) {
             this.nickname = nickname;
         }
         if (address != null) {
             this.address = address;
-        }
-        if (location != null) {
-            this.location = location;
         }
         if (profileImage != null) {
             this.profileImage = profileImage;
@@ -105,10 +102,9 @@ public class User {
 
     /**
      * 좌표 정보 업데이트
-     * - 주소 변경 시 외부 API(VWorld)로 변환된 좌표를 설정
+     * - 주소 변경 시 외부 API(VWorld)로 변환된 좌표를 PostGIS Point로 설정
      */
-    public void updateCoordinates(Double latitude, Double longitude) {
-        this.latitude = latitude;
-        this.longitude = longitude;
+    public void updateCoordinates(Point location) {
+        this.location = location;
     }
 }

@@ -4,6 +4,7 @@ import com.nearsplit.domain.split_group.entity.Participant;
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
 import com.querydsl.core.Tuple;
+import org.locationtech.jts.geom.Point;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +30,8 @@ public class SplitGroupResponse {
     private BigDecimal totalPrice;
     private int maxParticipants;
     private String pickupLocation;
-    private String pickupLocationGeo;
+    private Double latitude;        // 픽업 위치 위도
+    private Double longitude;       // 픽업 위치 경도
     private SplitGroupStatus groupState;
     private Long hostUserId;
     private String hostNickname;
@@ -41,6 +43,7 @@ public class SplitGroupResponse {
     private List<ParticipantResponse> participants;
 
     public static SplitGroupResponse from(SplitGroup splitGroup) {
+        Point loc = splitGroup.getLocation();
 
         return SplitGroupResponse.builder()
                 .id(splitGroup.getId())
@@ -48,7 +51,8 @@ public class SplitGroupResponse {
                 .totalPrice(splitGroup.getTotalPrice())
                 .maxParticipants(splitGroup.getMaxParticipants())
                 .pickupLocation(splitGroup.getPickupLocation())
-                .pickupLocationGeo(splitGroup.getPickupLocationGeo())
+                .latitude(loc != null ? loc.getY() : null)
+                .longitude(loc != null ? loc.getX() : null)
                 .groupState(splitGroup.getStatus())
                 .hostUserId(splitGroup.getHostUserId())
                 .currentParticipants(splitGroup.getCurrentParticipants())
@@ -63,6 +67,7 @@ public class SplitGroupResponse {
     public static SplitGroupResponse from(Tuple tuple) {
         SplitGroup group = tuple.get(splitGroup);
         String nickname = tuple.get(user.nickname);
+        Point loc = group.getLocation();
 
         return SplitGroupResponse.builder()
                 .id(group.getId())
@@ -70,7 +75,8 @@ public class SplitGroupResponse {
                 .totalPrice(group.getTotalPrice())
                 .maxParticipants(group.getMaxParticipants())
                 .pickupLocation(group.getPickupLocation())
-                .pickupLocationGeo(group.getPickupLocationGeo())
+                .latitude(loc != null ? loc.getY() : null)
+                .longitude(loc != null ? loc.getX() : null)
                 .groupState(group.getStatus())
                 .hostUserId(group.getHostUserId())
                 .hostNickname(nickname)

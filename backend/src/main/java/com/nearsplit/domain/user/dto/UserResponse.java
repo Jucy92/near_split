@@ -5,6 +5,7 @@ import com.nearsplit.domain.user.entity.User;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
+import org.locationtech.jts.geom.Point;
 
 import java.time.LocalDateTime;
 
@@ -19,7 +20,8 @@ public class UserResponse {
     private String name;
     private String nickname;
     private String address;
-    private String location;
+    private Double latitude;        // 위도 (Point에서 추출)
+    private Double longitude;       // 경도 (Point에서 추출)
     private String profileImage;
     private String phone;
     private LocalDateTime updatedAt;
@@ -36,13 +38,15 @@ public class UserResponse {
 
     // 프로필 조회용 - 전체 정보
     public static UserResponse from(User user) {
+        Point loc = user.getLocation();
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .nickname(user.getNickname())
                 .address(user.getAddress())
-                .location(user.getLocation())
+                .latitude(loc != null ? loc.getY() : null)
+                .longitude(loc != null ? loc.getX() : null)
                 .profileImage(user.getProfileImage())
                 .phone(user.getPhone())
                 .updatedAt(user.getUpdatedAt())

@@ -16,6 +16,10 @@ import com.nearsplit.domain.user.entity.User;
 import com.nearsplit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,9 @@ public class SplitGroupService {
     private final ParticipantRepository participantRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+
+    // SRID 4326 = WGS84 (GPS 표준 좌표계)
+    private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     // ========================================
     // 그룹 생성
@@ -106,13 +113,21 @@ public class SplitGroupService {
         SplitGroup target = splitGroupRepository.findByIdAndHostUserId(splitGroupId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("수정 권한이 없습니다."));
 
+        // 위도/경도가 있으면 PostGIS Point로 변환 (경도, 위도 순서)
+        Point location = null;
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            location = geometryFactory.createPoint(
+                    new Coordinate(request.getLongitude(), request.getLatitude())
+            );
+        }
+
         // 도메인 메서드로 수정 (참여자 유무 검증 포함)
         target.updateGroup(
                 request.getTitle(),
                 request.getTotalPrice(),
                 request.getMaxParticipants(),
                 request.getPickupLocation(),
-                request.getPickupLocationGeo(),
+                location,
                 request.getClosedAt()
         );
 

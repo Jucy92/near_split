@@ -8,6 +8,9 @@ import com.nearsplit.external.vworld.dto.Coordinate;
 import com.nearsplit.external.vworld.service.VWorldGeocodingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
     private final VWorldGeocodingService vWorldGeocodingService;
+
+    private static final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
     public UserResponse getProfile(long userId) {
         User findUser = userRepository.findById(userId)
@@ -44,7 +49,6 @@ public class UserService {
         target.updateProfile(
                 request.getNickname(),
                 request.getAddress(),
-                request.getLocation(),
                 request.getProfileImage(),
                 request.getPhone()
         );
@@ -52,7 +56,11 @@ public class UserService {
         // 주소 변경 시 좌표 업데이트 (외부 API 호출 → 서비스 책임)
         if (request.getAddress() != null) {
             Coordinate coordinate = vWorldGeocodingService.getCoordinate(request.getAddress());
-            target.updateCoordinates(coordinate.getLatitude(), coordinate.getLongitude());
+            // VWorld 좌표(경도, 위도)를 PostGIS Point로 변환 (경도, 위도 순서)
+            Point location = geometryFactory.createPoint(
+                    new org.locationtech.jts.geom.Coordinate(coordinate.getLongitude(), coordinate.getLatitude())
+            );
+            target.updateCoordinates(location);
         }
 
         // @Transactional 내에서는 save() 생략 가능 (Dirty Checking)

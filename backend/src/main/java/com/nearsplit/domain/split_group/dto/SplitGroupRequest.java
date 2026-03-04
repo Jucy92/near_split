@@ -24,7 +24,8 @@ public class SplitGroupRequest {
     private Integer maxParticipants;
     //    private String pickupAddress;
     private String pickupLocation;
-    private String pickupLocationGeo;
+    private Double latitude;        // 픽업 위치 위도
+    private Double longitude;       // 픽업 위치 경도
     private LocalDate closedAt;
 
 }
