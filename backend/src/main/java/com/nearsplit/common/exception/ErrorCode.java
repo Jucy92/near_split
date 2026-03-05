@@ -52,7 +52,10 @@ public enum ErrorCode {
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 상품번호 입니다"),
 
     // 알림 에러
-    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "존재하지 않는 알림번호 입니다");
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "존재하지 않는 알림번호 입니다"),
+
+    // 좌표 에러 (GIS: 위치기반 서비스)
+    LOCATION_NOT_REGISTERED(HttpStatus.BAD_REQUEST, "GIS001", "서비스 이용을 위해 프로필에서 주소를 등록해 주세요.");
 
     private final HttpStatus status;
     private final String code;

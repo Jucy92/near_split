@@ -2,9 +2,11 @@ package com.nearsplit.domain.split_group.repository;
 
 import com.nearsplit.domain.split_group.entity.SplitGroup;
 import com.nearsplit.domain.split_group.entity.SplitGroupStatus;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,5 +27,14 @@ public interface SplitGroupRepository extends JpaRepository<SplitGroup, Long>, S
 
 
     boolean existsByIdAndHostUserId(Long groupId, Long userId);
+
+    @Query(value = """
+        SELECT * FROM split_group
+        WHERE status = 'RECRUITING'
+        AND location IS NOT NULL
+        AND ST_DWithin(location::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, 4000)
+        ORDER BY created_at DESC
+        """, nativeQuery = true)
+    List<SplitGroup> findNearByGroup(@Param("lat") double lat, @Param("lon") double lon);
 
 }

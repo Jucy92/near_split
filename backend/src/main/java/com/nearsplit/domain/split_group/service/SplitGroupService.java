@@ -76,6 +76,21 @@ public class SplitGroupService {
         return splitGroupRepository.findByStatus(SplitGroupStatus.RECRUITING, pageRequest);
     }
 
+    // 모집 중인 전체 그룹 중에서, 사용자 기준 4km 안에 있는 그룹만 조회
+    public List<SplitGroup> getNearbyGroups(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        Point userLocation = user.getLocation();
+
+        if (userLocation == null) {
+            throw new BusinessException(ErrorCode.LOCATION_NOT_REGISTERED);
+        }
+        double lon = userLocation.getX();
+        double lat = userLocation.getY();
+        return splitGroupRepository.findNearByGroup(lat, lon);
+    }
+
     public List<Participant> getMySplitGroups(Long userId) {
         if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("존재하지 않는 회원입니다. 인증 정보를 확인해 주세요.");

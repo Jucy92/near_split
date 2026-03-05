@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/split")
@@ -28,7 +29,9 @@ public class SplitGroupController {
     private final SplitGroupService splitGroupService;
 
     @GetMapping
+    /*  // 기존 거리 계산 없을 때 사용 했던 전체 그룹 조회
     public ResponseEntity<Page<SplitGroupResponse>> getAllGroup() {
+        
         Sort sort = Sort.by(Sort.Direction.DESC, "CreatedAt");
         //Sort sort = Sort.by(Sort.Direction.valueOf(sortDirect), sortBy);  // 단일 정렬
         //Sort sort = Sort.by(Sort.Direction.valueOf(sortDirect), sortBy) // 다중 정렬
@@ -39,6 +42,13 @@ public class SplitGroupController {
         Page<SplitGroupResponse> responsePage = splitGroupsPage.map(SplitGroupResponse::from);      // Entity -> DTO 변경 작업
         
         return ResponseEntity.ok().body(responsePage);
+    }
+    */
+    public ResponseEntity<List<SplitGroupResponse>> getAllGroup(@AuthenticationPrincipal Long userId) {
+
+        List<SplitGroup> nearbyGroups = splitGroupService.getNearbyGroups(userId);
+        List<SplitGroupResponse> response = nearbyGroups.stream().map(SplitGroupResponse::from).toList();
+        return ResponseEntity.ok().body(response);
     }
 
     @PostMapping
@@ -69,9 +79,10 @@ public class SplitGroupController {
 
     @PatchMapping("/{groupId}")
     public ResponseEntity<?> updateSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId
-                                            , @RequestBody SplitGroupRequest groupRequest) {
+            , @RequestBody SplitGroupRequest groupRequest) {
         return ResponseEntity.ok().body(splitGroupService.updateSplitGroup(groupId, userId, groupRequest));
     }
+
     @DeleteMapping("/{groupId}")
     public ResponseEntity<?> deleteSplitGroup(@PathVariable Long groupId, @AuthenticationPrincipal Long userId) {
         return ResponseEntity.ok().body(splitGroupService.deleteSplitGroup(groupId, userId));
