@@ -26,20 +26,19 @@
     - 'my'   → loadMyGroups()
 
   ==================== API 목록 ====================
-  | 기능             | 메서드 | 엔드포인트              | 호출 함수      |
-  |------------------|--------|-------------------------|----------------|
-  | 전체 그룹 목록   | GET    | /api/split?page=N&size=M| getGroups()    |
-  | 참여 그룹 목록   | GET    | /api/split/my           | getMyGroups()  |
+  | 기능             | 메서드 | 엔드포인트  | 호출 함수      |
+  |------------------|--------|-------------|----------------|
+  | 전체 그룹 목록   | GET    | /api/split  | getGroups()    |
+  | 참여 그룹 목록   | GET    | /api/split/my| getMyGroups() |
 
   ==================== 백엔드 응답 구조 차이 ====================
-  1. 전체 그룹 (GET /api/split) - SplitGroupResponse + Page
-     {
-       "content": [
-         { "id": 1, "groupState": "RECRUITING", ... }
-       ],
-       "totalPages": 5,
-       "totalElements": 45
-     }
+  1. 전체 그룹 (GET /api/split) - SplitGroupResponse[] (List, 페이징 없음)
+     - 사용자 위치 기준 4km 반경 내 모집중인 그룹만 반환
+     - 주소 미등록 시 400 Bad Request + { code: 'GIS001' } 반환
+       → GIS001 감지 시 alert 후 /profile 페이지로 이동
+     [
+       { "id": 1, "groupState": "RECRUITING", ... }
+     ]
      - id 필드 사용
      - groupState 필드 사용
 
@@ -139,25 +138,7 @@
           </div>
         </div>
 
-        <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1" class="mt-4">
-          <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 0 }">
-              <button class="page-link" @click="changePage(currentPage - 1)">&laquo;</button>
-            </li>
-            <li
-              v-for="page in totalPages"
-              :key="page"
-              class="page-item"
-              :class="{ active: currentPage === page - 1 }"
-            >
-              <button class="page-link" @click="changePage(page - 1)">{{ page }}</button>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages - 1 }">
-              <button class="page-link" @click="changePage(currentPage + 1)">&raquo;</button>
-            </li>
-          </ul>
-        </nav>
+        <!-- 페이지네이션 제거됨: /api/split은 이제 List 반환 (4km 반경 내 전체 목록) -->
       </div>
 
       <!-- 참여 그룹 (myOnly 모드 또는 '참여 그룹' 탭 선택 시) -->
@@ -224,10 +205,8 @@ export default {
       // myOnly: HomeView '내 그룹'에서 진입 시 true → 탭 숨기고 참여 그룹만 표시
       myOnly: false,
       loading: false,
-      // 전체 그룹
+      // 전체 그룹 (List, 페이징 없음 - 4km 반경 내 그룹)
       groups: [],
-      currentPage: 0,
-      totalPages: 0,
       // 참여 그룹 (내 그룹)
       myGroups: []
     }
@@ -265,11 +244,19 @@ export default {
     async loadAllGroups() {
       this.loading = true
       try {
-        const response = await getGroups(this.currentPage, 9)
-        const data = response.data
-        this.groups = data.content || []
-        this.totalPages = data.totalPages || 0
+        // GET /api/split 호출 - 사용자 위치 기준 4km 반경 그룹 목록 반환 (List)
+        const response = await getGroups()
+        // 백엔드가 List<SplitGroupResponse> 반환 → response.data가 배열
+        this.groups = response.data || []
       } catch (error) {
+        // GIS001: 사용자가 주소를 등록하지 않은 경우
+        // 백엔드 에러 응답 구조: { code: 'GIS001', message: '서비스 이용을 위해...' }
+        if (error.response?.data?.code === 'GIS001') {
+          alert('서비스 이용을 위해 프로필에서 주소를 먼저 등록해 주세요.')
+          // 프로필 페이지로 이동해서 주소를 등록하도록 유도
+          this.$router.push('/profile')
+          return
+        }
         console.error('그룹 목록 로드 실패:', error)
       } finally {
         this.loading = false
@@ -285,13 +272,6 @@ export default {
         console.error('내 그룹 로드 실패:', error)
       } finally {
         this.loading = false
-      }
-    },
-
-    changePage(page) {
-      if (page >= 0 && page < this.totalPages) {
-        this.currentPage = page
-        this.loadAllGroups()
       }
     },
 

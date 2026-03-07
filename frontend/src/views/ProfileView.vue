@@ -2,8 +2,10 @@
   파일: ProfileView.vue
   설명: 사용자 프로필 조회/수정 페이지
         - 현재 로그인한 사용자 정보 표시
-        - 프로필 수정 기능 (닉네임, 전화번호, 주소, 지역, 비밀번호)
+        - 프로필 수정 기능 (닉네임, 전화번호, 주소, 비밀번호)
         - 이름과 이메일은 수정 불가 (읽기 전용)
+        - location 필드는 PostGIS geometry 타입으로 백엔드에서 자동 관리 (프론트 직접 수정 불가)
+          → 주소(address) 변경 시 VWorld API를 통해 서버에서 자동 좌표 변환
 
   ==================== 페이지 접근 흐름 ====================
   1. HomeView 또는 NavBar에서 "프로필" 클릭
@@ -33,21 +35,22 @@
     "nickname": "동동이",
     "phone": "010-1234-5678",
     "address": "서울시 강남구",
-    "location": "강남구",
+    "latitude": 37.4979,
+    "longitude": 127.0276,
     "profileImage": "https://example.com/image.jpg"
   }
 
   ==================== 수정 가능/불가 필드 ====================
-  | 필드         | 수정 가능 | 비고                    |
-  |--------------|-----------|-------------------------|
-  | name         | ❌        | 회원가입 시 설정, 변경 불가 |
-  | email        | ❌        | 회원가입 시 설정, 변경 불가 |
-  | nickname     | ✅        | 필수                    |
-  | phone        | ✅        | 선택                    |
-  | address      | ✅        | 선택                    |
-  | location     | ✅        | 선택                    |
-  | profileImage | ✅        | URL 형식               |
-  | password     | ✅        | 변경 시에만 입력        |
+  | 필드         | 수정 가능 | 비고                          |
+  |--------------|-----------|-------------------------------|
+  | name         | ❌        | 회원가입 시 설정, 변경 불가    |
+  | email        | ❌        | 회원가입 시 설정, 변경 불가    |
+  | nickname     | ✅        | 필수                          |
+  | phone        | ✅        | 선택                          |
+  | address      | ✅        | 선택 (변경 시 좌표 자동 갱신) |
+  | profileImage | ✅        | URL 형식                      |
+  | password     | ✅        | 변경 시에만 입력              |
+  | location     | ❌        | PostGIS geometry, 서버 자동 관리 |
 -->
 <template>
   <div class="container py-4">
@@ -125,11 +128,6 @@
               <div class="mb-3">
                 <label class="form-label text-muted small">주소</label>
                 <p class="mb-0 fs-5">{{ user?.address || '-' }}</p>
-              </div>
-
-              <div class="mb-4">
-                <label class="form-label text-muted small">지역</label>
-                <p class="mb-0 fs-5">{{ user?.location || '-' }}</p>
               </div>
 
               <button class="btn btn-primary w-100" @click="startEdit">
@@ -226,19 +224,6 @@
                 <small class="text-muted">도로명주소 검색 (행정안전부 제공)</small>
               </div>
 
-              <!-- 상세 위치 (거래 장소 설명용 - 사용자 직접 입력) -->
-              <div class="mb-3">
-                <label for="location" class="form-label">상세 위치 (선택)</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  id="location"
-                  v-model="editForm.location"
-                  placeholder="예: 역삼역 2번출구 앞, GS25 편의점 앞"
-                />
-                <small class="text-muted">거래 시 만날 장소를 입력하세요</small>
-              </div>
-
               <!-- 비밀번호 변경 (선택사항) -->
               <div class="mb-4">
                 <label for="password" class="form-label">새 비밀번호</label>
@@ -280,7 +265,6 @@ const FIELD_LABELS = {
   nickname: '닉네임',
   phone: '전화번호',
   address: '주소',
-  location: '지역',
   profileImage: '프로필 이미지',
   password: '비밀번호'
 }
@@ -297,8 +281,7 @@ export default {
       editForm: {
         nickname: '',       // 닉네임
         phone: '',          // 전화번호
-        address: '',        // 주소
-        location: '',       // 지역
+        address: '',        // 주소 (변경 시 서버에서 좌표 자동 갱신)
         profileImage: '',   // 프로필 이미지 URL
         password: ''        // 새 비밀번호 (선택)
       },
@@ -338,7 +321,6 @@ export default {
       this.editForm.nickname = this.user.nickname || ''
       this.editForm.phone = this.user.phone || ''
       this.editForm.address = this.user.address || ''
-      this.editForm.location = this.user.location || ''
       this.editForm.profileImage = this.user.profileImage || ''
       this.editForm.password = ''  // 비밀번호는 항상 빈 값
       this.editMode = true
@@ -396,13 +378,8 @@ export default {
      * - 건물명이 있으면 location에 자동 입력
      */
     selectAddress(addr) {
-      // 도로명주소를 address 필드에 저장
+      // 도로명주소를 address 필드에 저장 (서버에서 VWorld API로 좌표 자동 변환)
       this.editForm.address = addr.roadAddr
-
-      // 건물명이 있고 location이 비어있으면 자동 입력
-      if (addr.bdNm && !this.editForm.location) {
-        this.editForm.location = addr.bdNm
-      }
 
       // 검색 결과 목록 초기화
       this.addressResults = []
@@ -417,11 +394,11 @@ export default {
 
       try {
         // 비밀번호가 비어있으면 요청에서 제외
+        // location 필드는 서버에서 address 기반으로 자동 관리 (PostGIS geometry)
         const updateData = {
           nickname: this.editForm.nickname,
           phone: this.editForm.phone || null,
           address: this.editForm.address || null,
-          location: this.editForm.location || null,
           profileImage: this.editForm.profileImage || null
         }
 
